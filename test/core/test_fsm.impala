@@ -1,0 +1,24 @@
+type State = i32;
+
+fn main(argc: i32, argv: &[&[u8]]) -> i32 {
+    let mut num = 0;
+    let mut val = argc - 1;
+    let fsm = make_fsm();
+    let len = 255;
+    fsm.add(1, // check
+      || {},
+      // stop the FSM when val >= len, otherwise go to 2
+      || if val > len { 0 } else { 2 }
+    );
+    fsm.add(2, // inc val
+      || val += 1,
+      || 3 // go to 3
+    );
+    fsm.add(3, // inc num
+      || num += 1,
+      || 1 // go to 1
+    );
+    fsm.run(1); // start at 1
+
+    num
+}

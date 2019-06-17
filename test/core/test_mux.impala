@@ -1,0 +1,11 @@
+type T = i32;
+
+fn odd()  -> i32 { 1 }
+fn even() -> i32 { 0 }
+fn multiple_four() -> i32 { 4 }
+
+fn main(argc: i32, argv: &[&[u8]]) -> i32 {
+    let value = argc;
+    let sel = value & 3;
+    mux(sel, 4, [multiple_four, odd, even, odd])
+}

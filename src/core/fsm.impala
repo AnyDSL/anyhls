@@ -1,0 +1,46 @@
+struct FSM {
+    add: fn(State, fn() -> (), fn() -> State) -> (),
+    run: fn(State) -> ()
+}
+
+fn @make_fsm() -> FSM {
+    let mut states : fn(State) -> State = @ |cur| cur;
+    FSM {
+        add: @ |name, action, next| {
+            let old = states;
+            states = @ |cur: State| {
+                if name == cur {
+                    action();
+                    next()
+                } else {
+                    old(cur)
+                }
+            }
+        },
+        run: @ |init| {
+            let mut cur : State = init;
+            let old = states;
+            while true {
+                match old(cur) {
+                    0 => break(),
+                    label => cur = label,
+                }
+            }
+        },
+        //run_pipelined: @ |init, ii, beg, end| {
+        //    let loop = if ii == 0 {
+        //                    @ |beg, end| range(beg, end)
+        //                } else {
+        //                    @ |beg, end| pipeline(ii, beg, end)
+        //                };
+        //    let mut cur : State = init;
+        //    let old = states;
+        //    for i in loop(beg, end) {
+        //        match old(cur) {
+        //            0 => break(),
+        //            label => cur = label,
+        //        }
+        //    }
+        //}
+    }
+}

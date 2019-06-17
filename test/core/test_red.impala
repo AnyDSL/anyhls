@@ -1,0 +1,9 @@
+type T = i32;
+
+fn main(argc: i32, argv: &[&[u8]]) -> i32 {
+    let a = argc;
+    let b = -1;
+    let c = 1;
+    let d = -argc;
+    reduce(0, 4, [a, b, c, d], |x, y| x + y)
+}

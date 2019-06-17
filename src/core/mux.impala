@@ -1,0 +1,8 @@
+fn @(?n) mux(i: i32, n: i32, input: &[fn() -> T]) -> T {
+    for j in unroll(0, n - 1) {
+        if i == j {
+            return(@@(input(j))())
+        }
+    }
+    @@(input(n - 1))()
+}

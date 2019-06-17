@@ -1,0 +1,15 @@
+fn @(?beg & ?end) reduce( beg: int
+                        , end: int
+                        , input: &[T]
+                        , op: fn(T, T) -> T
+                        ) -> T {
+    let n = end - beg;
+    if n == 1 {
+        input(beg)
+    } else {
+        let m = (end + beg) / 2;
+        let a = reduce(beg, m, input, op);
+        let b = reduce(m, end, input, op);
+        op(a, b)
+    }
+}
