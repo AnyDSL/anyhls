@@ -13,9 +13,14 @@ anydsl_runtime_wrap(TEST_RED CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FL
 add_executable(test_red ${TEST_RED})
 target_link_libraries(test_red ${ANYDSL_RUNTIME_LIBRARIES})
 
+anydsl_runtime_wrap(TEST_REGS1D CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} FILES ${PROJECT_SOURCE_DIR}/src/core/regs1d.impala test_regs1d.impala)
+add_executable(test_regs1d ${TEST_REGS1D})
+target_link_libraries(test_regs1d ${ANYDSL_RUNTIME_LIBRARIES})
+
 add_test(NAME mux1 COMMAND test_mux a)
 add_test(NAME mux2 COMMAND test_mux a b c d e)
 add_test(NAME fsm  COMMAND test_fsm)
 add_test(NAME red1 COMMAND test_red)
 add_test(NAME red2 COMMAND test_red a)
 add_test(NAME red3 COMMAND test_red a b)
+add_test(NAME regs1d COMMAND test_regs1d)

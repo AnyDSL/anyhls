@@ -1,0 +1,27 @@
+struct Regs1D {
+    read  : fn(int) -> T,
+    write : fn(int, T) -> (),
+    size  : int
+}
+
+
+fn @(?size) make_regs1d(size: int) -> Regs1D {
+    if size == 0 {
+        Regs1D {
+            read  : @|_| undef[T](),
+            write : @|_, _| (),
+            size : size
+        }
+    } else {
+        //let mut reg : T;
+        let mut reg = 0 as T;
+        let others = make_regs1d(size - 1);
+        Regs1D {
+            read  : @|i|    if i + 1 == size { reg }
+                            else { others.read(i) },
+            write : @|i, v| if i + 1 == size { reg = v }
+                            else { others.write(i, v) },
+            size : size
+        }
+    }
+}

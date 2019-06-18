@@ -1,0 +1,19 @@
+type T = i32;
+
+fn main(argc: i32, argv: &[&[u8]]) -> i32 {
+    let size = 5;
+    let regs = make_regs1d(size);
+
+    for i in range(0, size) {
+        regs.write(i, size - i);
+    }
+
+    let mut passed = 0;
+    for i in range(0, size) {
+        if regs.read(i) != size - i {
+            passed = 10 + i;
+        };
+    }
+
+    passed
+}
