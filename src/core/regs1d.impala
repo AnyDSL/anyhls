@@ -1,11 +1,11 @@
 struct Regs1D {
-    read  : fn(int) -> T,
-    write : fn(int, T) -> (),
-    size  : int
+    read  : fn(i32) -> T,
+    write : fn(i32, T) -> (),
+    size  : i32
 }
 
 
-fn @(?size) make_regs1d(size: int) -> Regs1D {
+fn @(?size) make_regs1d(size: i32) -> Regs1D {
     if size == 0 {
         Regs1D {
             read  : @|_| undef[T](),
