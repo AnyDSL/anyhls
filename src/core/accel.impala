@@ -1,0 +1,7 @@
+fn @accel(fpga: Accelerator, body: fn() -> ()) -> () {
+    let grid  = (1, 1, 1);
+    let block = (1, 1, 1);
+    for work_item in fpga.exec(grid, block) {
+        @@body();
+    }
+}

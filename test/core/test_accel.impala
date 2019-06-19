@@ -1,0 +1,52 @@
+type T = i32;
+
+fn @read(buf: Buffer, i: i32) -> T { bitcast[&[1][T]](buf.data)(i) }
+fn @write(buf: Buffer, i: i32, v: T) -> () { bitcast[&mut[1][T]](buf.data)(i) = v }
+
+fn main() -> i32 {
+    let size   = 2048;
+
+    let use_hls = true;
+
+    let fpga = if use_hls { hls_accelerator() }
+                     else { let device_id = 0; opencl_accelerator(device_id) };
+
+    let arr     = alloc_cpu(size * sizeof[T]());
+    let out     = alloc_cpu(size * sizeof[T]());
+    let arr_fpga = fpga.alloc(size * sizeof[T]());
+    let out_fpga = fpga.alloc(size * sizeof[T]());
+    for i in range(0, size) {
+        let arr_ptr = bitcast[&mut[T]](arr.data);
+        let out_ptr = bitcast[&mut[T]](out.data);
+        arr_ptr(i) = i as T;
+        out_ptr(i) = 0 as T;
+    }
+
+    copy(arr, arr_fpga); //from cpu to fpga
+
+    with accel(fpga) {
+        for idx in pipeline(1, 0, size) {
+            write(out_fpga, idx, read(arr_fpga, idx));
+        }
+    }
+
+    fpga.sync();
+    copy(out_fpga, out); //from fpga to cpu
+
+    let mut passed = 0;
+    for i in range(0, size) {
+        if bitcast[&[T]](out.data)(i) != bitcast[&[T]](arr.data)(i) { passed++; }
+    }
+    if passed == 0 {
+        print_string("Test PASSED!\n");
+    } else {
+        print_string("Test FAILED!\n");
+    }
+
+    release(out_fpga);
+    release(arr_fpga);
+    release(arr);
+    release(out);
+
+    if passed >= 256 { 255 } else { passed }
+}
