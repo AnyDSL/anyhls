@@ -31,8 +31,5 @@ else()
     unset(SOC CACHE)
 endif()
 
-set(ANYDSL_RUNTIME_LIBRARIES ${AnyDSL_runtime_LIBRARIES})
-set(HLS_FLAGS ${SOC} ${SYNTHESIS} ${FPGA_PART})
-
 #add_subdirectory(src)
 add_subdirectory(test)
