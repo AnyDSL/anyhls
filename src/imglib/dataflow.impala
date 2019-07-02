@@ -1,0 +1,21 @@
+fn @get_fpga_backend(use_hls : bool) -> Accelerator {
+    if use_hls { hls_accelerator() }
+          else { let device_id = 0; opencl_accelerator(device_id) }
+}
+
+fn @host2host(fpga: Accelerator, arr: Img, out: Img, body: fn(Img, Img) -> ()) -> () {
+    let arr_dev = alloc_img(fpga, arr);
+    let out_dev = alloc_img(fpga, out);
+    copy_img(arr, arr_dev);
+
+    let grid  = (1, 1, 1);
+    let block = (1, 1, 1);
+    for work_item in fpga.exec(grid, block) {
+        @@body(arr_dev, out_dev);
+    }
+
+    fpga.sync();
+    copy_img(out_dev, out);
+    release_img(arr_dev);
+    release_img(out_dev);
+}

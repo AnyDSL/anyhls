@@ -1,0 +1,62 @@
+// stream support
+type stream = channel;
+
+struct Img {
+    buf    : Buffer,
+    fifo   : &mut stream,
+    virtual: bool,
+    width  : i32,
+    height : i32,
+    stride : i32,
+}
+
+fn @size_img(img: Img) -> i32 { img.height * img.stride }
+
+fn @img_read(img: Img, i: i32) -> pixel_t { bitcast[&[1][pixel_t]](img.buf.data)(i) }
+
+fn @img_read2d(img: Img, x: i32, y:i32) -> pixel_t { bitcast[&[1][pixel_t]](img.buf.data)(y * img.stride + x) }
+
+fn @img_write(img: Img, i: i32, val: pixel_t) -> () { bitcast[&mut[1][pixel_t]](img.buf.data)(i) = val }
+
+fn @img_write2d(img: Img, x: i32, y:i32, val: pixel_t) -> () { bitcast[&mut[1][pixel_t]](img.buf.data)(y * img.stride + x) = val }
+
+fn @get_img_read(img: Img) -> fn(i32) -> pixel_t {
+    |i| img_read(img, i)
+}
+
+fn @get_img_read2d(img: Img) -> fn(i32, i32) -> pixel_t {
+    |x, y| img_read(img, y * img.stride + x)
+}
+
+fn @new_img(width: i32, height: i32, stride: i32, buf: Buffer) -> Img {
+    static mut dummy: stream;
+    Img { buf: buf, fifo: &mut dummy, virtual: false, width: width, height: height, stride: stride }
+}
+
+fn @alloc_img(acc : Accelerator, img: Img) -> Img {
+    new_img(img.width, img.height, img.stride, acc.alloc(img.stride * img.height * sizeof[pixel_t]()))
+}
+
+fn @create_host_img(width: i32, height: i32, pFactor: i32) -> Img {
+    let stride = round_up(width, pFactor);
+    let buf = alloc_cpu(stride * height * sizeof[pixel_t]());
+    new_img(width, height, stride, buf)
+}
+
+fn @new_virtual_img(width: i32, height: i32, stride: i32, fifo: &mut stream) -> Img {
+    let buf = alloc_cpu(0);
+    Img { buf: buf, fifo: fifo, virtual: true, width: width, height: height, stride: stride }
+}
+
+fn @create_virtual_img(width: i32, height: i32, fifo: &mut stream, pFactor: i32) -> Img {
+    let stride = round_up(width, pFactor);
+    new_virtual_img(width, height, stride, fifo)
+}
+
+fn @release_img(img: Img) -> () {
+  release(img.buf)
+}
+
+fn @copy_img(src: Img, dst: Img) -> () {
+    copy(src.buf, dst.buf);
+}
