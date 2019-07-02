@@ -1,0 +1,113 @@
+// Note: image width is multiplicative of vect_factor (=4)
+
+static use_hls = false;
+type pixel_t = i32;
+
+// img
+struct Img {
+    buf    : Buffer,
+    width  : i32,
+    height : i32
+}
+
+fn @new_img(width: i32, height: i32, buf: Buffer) -> Img {
+    Img { width: width, height: height, buf: buf }
+}
+
+fn @read(img: Img, i: i32) -> pixel_t { bitcast[&[1][pixel_t]](img.buf.data)(i) }
+fn @write(img: Img, i: i32, val: pixel_t) -> () { bitcast[&mut[1][pixel_t]](img.buf.data)(i) = val }
+
+// accelerator
+fn @host2host(fpga: Accelerator, arr: Img, out: Img, body: fn(Img, Img) -> ()) -> () {
+    let size = arr.width * arr.height;
+    let arr_dev = new_img(arr.width, arr.height, fpga.alloc(size * sizeof[pixel_t]()));
+    let out_dev = new_img(out.width, out.height, fpga.alloc(size * sizeof[pixel_t]()));
+    copy(arr.buf, arr_dev.buf);
+
+    let grid  = (1, 1, 1);
+    let block = (1, 1, 1);
+    for work_item in fpga.exec(grid, block) {
+        @@body(arr_dev, out_dev);
+    }
+
+    fpga.sync();
+    copy(out_dev.buf, out.buf);
+    release(arr_dev.buf);
+    release(out_dev.buf);
+}
+
+// mem
+struct Mem1D {
+    read  : fn(i32) -> pixel_t,
+    write : fn(i32, pixel_t) -> (),
+    get   : fn(i32) -> (), // update for read
+    set   : fn(i32) -> (), // update for write
+    size  : i32,
+    vect_factor: i32
+}
+
+fn @make_img_mem_vec4(img: Img) -> Mem1D {
+    let mut value = [ 0 as pixel_t, .. 4 ];
+    fn @get(idx: i32) -> () { value = (get_global_read_vec4(img))(idx); }
+    fn @set(idx: i32) -> () { (get_global_write_vec4(img))(idx, value); }
+    fn @read(idx: i32) -> pixel_t { value(idx) }
+    fn @write(idx: i32, din: pixel_t) -> () { value(idx) = din; }
+    Mem1D{ read: read, write: write, get: get, set: set, size: img.height * img.width, vect_factor: 4}
+}
+
+// These are to handle parameter types of the hls function calls
+fn @get_global_read_vec4(img: Img) -> fn(i32) -> [pixel_t * 4] {
+    let ptr = if use_hls { bitcast[&[1][[pixel_t * 4]]](bitcast[&[1][pixel_t]](bitcast[&[1][[pixel_t * 4]]](img.buf.data))) }
+                    else { bitcast[&[1][[pixel_t *  4]]](bitcast[&[1][pixel_t]](img.buf.data)) };
+    |idx| { ptr($idx) }
+}
+
+fn @get_global_write_vec4(img: Img) -> fn(i32, [pixel_t * 4]) -> () {
+    let ptr = if use_hls { bitcast[&mut[1][[pixel_t * 4]]](bitcast[&mut[1][pixel_t]](bitcast[&mut[1][[pixel_t * 4]]](img.buf.data))) }
+                    else { bitcast[&mut[1][[pixel_t *  4]]](bitcast[&[1][pixel_t]](img.buf.data)) };
+    |idx, value| { ptr($idx) = value; }
+}
+
+
+fn main() -> i32 {
+    let width  = 1024;
+    let height = 1024;
+
+    let fpga = if use_hls { hls_accelerator() }
+                     else { let device_id = 0; opencl_accelerator(device_id) };
+
+    let size = width * height;
+    let arr = new_img(width, height, alloc_cpu(size * sizeof[pixel_t]()));
+    let out = new_img(width, height, alloc_cpu(size * sizeof[pixel_t]()));
+    for i in range(0, size) {
+        write(arr, i, i as pixel_t);
+        write(out, i, 0 as pixel_t);
+    }
+
+    for arr, out in host2host(fpga, arr, out) {
+        let arr_mem = make_img_mem_vec4(arr);
+        let out_mem = make_img_mem_vec4(out);
+        for idx in pipeline(1, 0, size / arr_mem.vect_factor) {
+            arr_mem.get(idx);
+            for i in unroll(0, arr_mem.vect_factor) {
+                out_mem.write(i, 2 * arr_mem.read(i));
+            }
+            out_mem.set(idx);
+        }
+    }
+
+    let mut passed = 0;
+    for i in range(0, size) {
+        if read(out,i) != 2 * read(arr, i) { passed++; }
+    }
+    if passed == 0 {
+        print_string("Test PASSED!\n");
+    } else {
+        print_string("Test FAILED!\n");
+    }
+
+    release(arr.buf);
+    release(out.buf);
+
+    if passed >= 256 { 255 } else { passed }
+}
