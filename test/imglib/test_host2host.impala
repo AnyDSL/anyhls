@@ -1,0 +1,73 @@
+type pixel_t = i32;
+
+// img
+struct Img {
+    buf    : Buffer,
+    width  : i32,
+    height : i32
+}
+
+fn @new_img(width: i32, height: i32, buf: Buffer) -> Img {
+    Img { width: width, height: height, buf: buf }
+}
+
+fn @read(img: Img, i: i32) -> pixel_t { bitcast[&[1][pixel_t]](img.buf.data)(i) }
+fn @write(img: Img, i: i32, val: pixel_t) -> () { bitcast[&mut[1][pixel_t]](img.buf.data)(i) = val }
+
+// accelerator
+fn @host2host(fpga: Accelerator, arr: Img, out: Img, body: fn(Img, Img) -> ()) -> () {
+    let size = arr.width * arr.height;
+    let arr_dev = new_img(arr.width, arr.height, fpga.alloc(size * sizeof[pixel_t]()));
+    let out_dev = new_img(out.width, out.height, fpga.alloc(size * sizeof[pixel_t]()));
+    copy(arr.buf, arr_dev.buf);
+
+    let grid  = (1, 1, 1);
+    let block = (1, 1, 1);
+    for work_item in fpga.exec(grid, block) {
+        @@body(arr_dev, out_dev);
+    }
+
+    fpga.sync();
+    copy(out_dev.buf, out.buf);
+    release(arr_dev.buf);
+    release(out_dev.buf);
+}
+
+
+fn main() -> i32 {
+    let width  = 1024;
+    let height = 1024;
+
+    let use_hls = false;
+    let fpga = if use_hls { hls_accelerator() }
+                     else { let device_id = 0; opencl_accelerator(device_id) };
+
+    let size = width * height;
+    let arr = new_img(width, height, alloc_cpu(size * sizeof[pixel_t]()));
+    let out = new_img(width, height, alloc_cpu(size * sizeof[pixel_t]()));
+    for i in range(0, size) {
+        write(arr, i, i as pixel_t);
+        write(out, i, 0 as pixel_t);
+    }
+
+    for arr, out in host2host(fpga, arr, out) {
+        for idx in pipeline(1, 0, size) {
+            write(out, idx, read(arr, idx));
+        }
+    }
+
+    let mut passed = 0;
+    for i in range(0, size) {
+        if read(out,i) != read(arr, i) { passed++; }
+    }
+    if passed == 0 {
+        print_string("Test PASSED!\n");
+    } else {
+        print_string("Test FAILED!\n");
+    }
+
+    release(arr.buf);
+    release(out.buf);
+
+    if passed >= 256 { 255 } else { passed }
+}
