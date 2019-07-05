@@ -1,14 +1,8 @@
-type Read   = fn(i32) -> pixel_t;
-type Read2d = fn(i32, i32) -> pixel_t;
-type StencilOp = fn(Read2d, i32, i32) -> pixel_t;
-
 type Operator = fn(Img, Img) -> ();
-
 
 fn @make_read_2d(width: i32, read: Read) -> Read2d {
     |x, y| { read(y * width + x) }
 }
-
 
 fn make_point_op(vect_factor: int, op: StencilOp) -> Operator {
     @ |arr_im, out_im| {

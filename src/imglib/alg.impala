@@ -1,0 +1,20 @@
+// Stencils
+type Read   = fn(i32) -> pixel_t;
+type Read2d = fn(i32, i32) -> pixel_t;
+type StencilOp = fn(Read2d, i32, i32) -> pixel_t;
+
+struct Extents {
+  x : i32,
+  y : i32
+}
+
+fn @extents(x: i32, y: i32) -> Extents { Extents { x : x, y : y } }
+
+struct Stencil {
+  op : StencilOp,
+  extents : Extents
+}
+
+fn @stencil(op: StencilOp, extents: Extents) -> Stencil {
+    Stencil { op : op, extents : extents }
+}
