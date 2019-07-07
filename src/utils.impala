@@ -185,33 +185,38 @@ fn @check(arr: Img, out: Img, f: fn(i32, i32) -> bool ) -> i32 {
     passed
 }
 
-fn @check_with_ref(arr: Img, out: Img, f: fn(i32, i32) -> pixel_t, offset_x: i32, offset_y: i32) -> i32 {
+fn @check_with_ref(arr: Img, out: Img, f: fn(i32, i32) -> pixel_t, roi_disp: (i32, i32), offset: (i32, i32)) -> i32 {
     // ref image
-    let ref = create_host_img(arr.width, arr.height, 1);
+    let ref_im = create_host_img(arr.width, arr.height, 1);
+    let (offset_x, offset_y) = offset;
 
     // test
     let mut passed = 0;
     for y in range(offset_y, arr.height - 2 * offset_y) {
         for x in range(offset_x, arr.width - 2 * offset_x) {
-            let res = f(x, y);
-            img_write2d(ref, x, y, res);
-            if res != img_read2d(arr, x, y) { passed++; }
+            let res = img_read2d(out, x, y);
+            let ref = f(x, y);
+            img_write2d(ref_im, x, y, ref);
+            if ref != res { passed++; }
             if passed == 1 {
                 print_string("Failed at (x, y) = (");
                 print_i32(x); print_string(", "); print_i32(y); print_string(")\n");
+                print_string("(ref, res) = (");
+                print_pixel(ref); print_string(", "); print_pixel(res); print_string(")\n");
             }
         }
     }
     if passed == 0 {
         print_string("Test PASSED!\n");
     } else {
+        let (disp_x, disp_y) = roi_disp;
         print_string("Test FAILED!\n");
         print_string("input image: \n");
-        display_image(arr, 0, 0);
+        display_image(arr, disp_x, disp_y);
         print_string("ref image: \n");
-        display_image(ref, 0, 0);
+        display_image(ref_im, disp_x, disp_y);
         print_string("output image: \n");
-        display_image(out, 0, 0);
+        display_image(out, disp_x, disp_y);
     }
     passed
 }

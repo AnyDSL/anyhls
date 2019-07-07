@@ -43,7 +43,9 @@ fn main() -> i32 {
     let operator = make_local_op_naive(vect_factor, filter);
     host2host(fpga, arr, out, operator);
 
-    let passed = check_with_ref(arr, out, |x, y| {filter.op(get_img_read2d(arr), x, y)}, 1, 1);
+    let roi_disp = (0, 0); // (width - 10, height - 10)
+    let offset = (1, 1);
+    let passed = check_with_ref(arr, out, |x, y| {filter.op(get_img_read2d(arr), x, y)}, roi_disp, offset);
 
     release_img(arr);
     release_img(out);
