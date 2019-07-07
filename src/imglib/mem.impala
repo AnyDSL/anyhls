@@ -5,7 +5,7 @@ struct Mem1D {
     set     : fn(i32) -> (), // update for write
     height  : i32,
     width   : i32,
-    stride  : i32,
+    stride  : i32, // (width / vect_factor)
     vect_factor : i32
 }
 
@@ -22,7 +22,8 @@ fn @make_img_mem1d(img: Img, vect_factor: i32) -> Mem1D {
 }
 
 fn @img_to_mem1d(img: Img, vect_factor: i32, get: fn(i32) -> (), set: fn(i32) -> (), read: fn(i32) -> pixel_t, write: fn(i32, pixel_t) -> ()) -> Mem1D {
-    Mem1D{ read: read, write: write, get: get, set: set, height: img.height, width: img.width, stride: img.stride, vect_factor: vect_factor}
+    let stride = round_up(img.stride, vect_factor) / vect_factor;
+    Mem1D{ read: read, write: write, get: get, set: set, height: img.height, width: img.width, stride: stride, vect_factor: vect_factor}
 }
 
 fn @make_img_mem_vec1(img: Img) -> Mem1D {

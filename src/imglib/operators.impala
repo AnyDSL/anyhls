@@ -8,7 +8,7 @@ fn make_point_op(vect_factor: int, op: StencilOp) -> Operator {
     @ |arr_im, out_im| {
         let arr = make_img_mem1d(arr_im, vect_factor);
         let out = make_img_mem1d(out_im, vect_factor);
-        for idx in pipeline(1, 0, arr.height * arr.stride / vect_factor) {
+        for idx in pipeline(1, 0, arr.height * arr.stride) {
             arr.get(idx);
             for i in unroll(0, arr.vect_factor) {
               out.write(i, op(make_read_2d(0, arr.read), i, 0));

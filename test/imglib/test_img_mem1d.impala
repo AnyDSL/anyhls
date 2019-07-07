@@ -52,7 +52,7 @@ fn @make_img_mem_vec4(img: Img) -> Mem1D {
     fn @set(idx: i32) -> () { (get_global_write_vec4(img))(idx, value); }
     fn @read(idx: i32) -> pixel_t { value(idx) }
     fn @write(idx: i32, din: pixel_t) -> () { value(idx) = din; }
-    Mem1D{ read: read, write: write, get: get, set: set, size: img.height * img.width, vect_factor: 4}
+    Mem1D{ read: read, write: write, get: get, set: set, size: img.height * img.width / 4, vect_factor: 4}
 }
 
 // These are to handle parameter types of the hls function calls
