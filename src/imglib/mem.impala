@@ -9,6 +9,42 @@ struct Mem1D {
     vect_factor : i32
 }
 
+struct Mem2D {
+    read    : fn(i32, i32) -> pixel_t,
+    write   : fn(i32, i32, pixel_t) -> (),
+    get     : fn(i32, i32) -> (), // update for read
+    set     : fn(i32, i32) -> (), // update for write
+    height  : i32,
+    width   : i32,
+    stride  : i32, // (width / vect_factor)
+    vect_factor : i32
+}
+
+// API
+fn @img_to_mem1d(img: Img, vect_factor: i32, get: fn(i32) -> (), set: fn(i32) -> (), read: fn(i32) -> pixel_t, write: fn(i32, pixel_t) -> ()) -> Mem1D {
+    let stride = round_up(img.stride, vect_factor) / vect_factor;
+    Mem1D{ read: read, write: write, get: get, set: set, height: img.height, width: img.width, stride: stride, vect_factor: vect_factor}
+}
+
+fn @img_to_mem2d(img: Img, vect_factor: i32, get: fn(i32, i32) -> (), set: fn(i32, i32) -> (), read: fn(i32, i32) -> pixel_t, write: fn(i32, i32, pixel_t) -> ()) -> Mem2D {
+    let stride = round_up(img.stride, vect_factor) / vect_factor;
+    Mem2D{ read: read, write: write, get: get, set: set, height: img.height, width: img.width, stride: stride, vect_factor: vect_factor}
+}
+
+fn @make_img_rand_mem1d(img: Img) -> Mem1D {
+    img_to_mem1d(img, 1, |_|{}, |_|{}, @|idx: i32| { img_read(img, idx) }, @|idx: i32, v: pixel_t| { img_write(img, idx, v) })
+}
+
+fn @make_img_rand_mem2d(img: Img) -> Mem2D {
+    let mut x_get = 0; let mut y_get = 0;
+    let mut x_set = 0; let mut y_set = 0;
+    let get = @|x: i32, y: i32| { x_get = x; y_get = y; };
+    let set = @|x: i32, y: i32| { x_set = x; y_set = y; };
+    let read = @|x: i32, y: i32| { img_read2d(img, x_get + x, y_get + y) };
+    let write = |x: i32, y: i32, v: pixel_t| { img_write2d(img, x_set + x, y_set + y, v) };
+    img_to_mem2d(img, 1, get, set, read, write)
+}
+
 fn @make_img_mem1d(img: Img, vect_factor: i32) -> Mem1D {
     match vect_factor {
          1 => make_img_mem_vec1 (img),
@@ -21,11 +57,7 @@ fn @make_img_mem1d(img: Img, vect_factor: i32) -> Mem1D {
     }
 }
 
-fn @img_to_mem1d(img: Img, vect_factor: i32, get: fn(i32) -> (), set: fn(i32) -> (), read: fn(i32) -> pixel_t, write: fn(i32, pixel_t) -> ()) -> Mem1D {
-    let stride = round_up(img.stride, vect_factor) / vect_factor;
-    Mem1D{ read: read, write: write, get: get, set: set, height: img.height, width: img.width, stride: stride, vect_factor: vect_factor}
-}
-
+// helper functions
 fn @make_img_mem_vec1(img: Img) -> Mem1D {
     let mut value = 0 as pixel_t;
     let global_read_fn = get_global_read_vec1(img);

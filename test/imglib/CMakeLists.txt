@@ -3,6 +3,10 @@ set(IMPALA_FLAGS --log-level info)
 set(ANYDSL_RUNTIME_LIBRARIES ${AnyDSL_runtime_LIBRARIES})
 set(HLS_FLAGS ${SOC} ${SYNTHESIS} ${FPGA_PART})
 
+set(ANYHLS_CORE_FILES
+    ${PROJECT_SOURCE_DIR}/src/core/regs1d.impala
+    ${PROJECT_SOURCE_DIR}/src/core/regs2d.impala)
+
 set(ANYHLS_COMMON_FILES
     ${PROJECT_SOURCE_DIR}/src/utils.impala
     ${PROJECT_SOURCE_DIR}/src/imglib/img.impala
@@ -29,6 +33,10 @@ anydsl_runtime_wrap(TEST_LBUF CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_F
 add_executable(test_lbuf ${TEST_LBUF})
 target_link_libraries(test_lbuf ${ANYDSL_RUNTIME_LIBRARIES})
 
+anydsl_runtime_wrap(TEST_SWIN CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${ANYHLS_CORE_FILES} ${ANYHLS_COMMON_FILES} test_swin.impala)
+add_executable(test_swin ${TEST_SWIN})
+target_link_libraries(test_swin ${ANYDSL_RUNTIME_LIBRARIES})
+
 anydsl_runtime_wrap(TEST_LOCAL CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${ANYHLS_FILES} test_local.impala)
 add_executable(test_local ${TEST_LOCAL})
 target_link_libraries(test_local ${ANYDSL_RUNTIME_LIBRARIES})
@@ -36,5 +44,6 @@ target_link_libraries(test_local ${ANYDSL_RUNTIME_LIBRARIES})
 add_test(NAME host2host COMMAND test_host2host)
 add_test(NAME img_mem1d COMMAND test_img_mem1d)
 add_test(NAME point     COMMAND test_point)
-add_test(NAME ;buf      COMMAND test_lbuf)
+add_test(NAME lbuf      COMMAND test_lbuf)
+add_test(NAME swin      COMMAND test_swin)
 add_test(NAME local     COMMAND test_local)

@@ -28,6 +28,10 @@ fn @get_img_read2d(img: Img) -> fn(i32, i32) -> pixel_t {
     |x, y| img_read(img, y * img.stride + x)
 }
 
+fn @get_img_write2d(img: Img) -> fn(i32, i32, pixel_t) -> () {
+    |x, y, v| img_write2d(img, x, y, v)
+}
+
 fn @new_img(width: i32, height: i32, stride: i32, buf: Buffer) -> Img {
     static mut dummy: stream;
     Img { buf: buf, fifo: &mut dummy, virtual: false, width: width, height: height, stride: stride }

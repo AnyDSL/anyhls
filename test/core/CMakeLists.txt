@@ -18,6 +18,10 @@ anydsl_runtime_wrap(TEST_REGS1D CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA
 add_executable(test_regs1d ${TEST_REGS1D})
 target_link_libraries(test_regs1d ${AnyDSL_runtime_LIBRARIES})
 
+anydsl_runtime_wrap(TEST_REGS2D CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} FILES ${PROJECT_SOURCE_DIR}/src/core/regs1d.impala ${PROJECT_SOURCE_DIR}/src/core/regs2d.impala test_regs2d.impala)
+add_executable(test_regs2d ${TEST_REGS2D})
+target_link_libraries(test_regs2d ${AnyDSL_runtime_LIBRARIES})
+
 anydsl_runtime_wrap(TEST_GENERATE CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${PROJECT_SOURCE_DIR}/src/core/accel.impala test_accel.impala)
 add_executable(test_accel ${TEST_GENERATE})
 target_link_libraries(test_accel ${AnyDSL_runtime_LIBRARIES})
@@ -29,4 +33,5 @@ add_test(NAME red1   COMMAND test_red)
 add_test(NAME red2   COMMAND test_red a)
 add_test(NAME red3   COMMAND test_red a b)
 add_test(NAME regs1d COMMAND test_regs1d)
+add_test(NAME regs2d COMMAND test_regs2d)
 add_test(NAME accel  COMMAND test_accel)

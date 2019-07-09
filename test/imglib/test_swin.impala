@@ -1,0 +1,165 @@
+type pixel_t = i32;
+type T = pixel_t;
+type channel = channel_i32;
+static use_hls = false;
+
+fn @print_pixel(val: pixel_t) -> () { print_i32(val) };
+
+// Fifo data structs
+struct Fifo2D {
+    read   : fn(i32, i32) -> pixel_t,
+    shift  : fn(i32, i32) -> (),
+    width  : i32,
+    height : i32,
+    vect_factor : i32
+}
+
+fn @new_fifo2d(width: i32, height: i32, vect_factor: i32, shift: fn(i32, i32) -> (), read: fn(i32, i32) -> pixel_t) -> Fifo2D {
+    Fifo2D { width: width, height: height, vect_factor: vect_factor, shift: shift, read: read }
+}
+
+fn make_img_fifo2d(img: Img, height: i32, vect_factor: i32) -> Fifo2D {
+      if height == 0 {
+          Fifo2D {
+              read   : @|x, y| undef[pixel_t](),
+              shift  : @|_, _| (),
+              height : height,
+              width  : 1,
+              vect_factor: vect_factor
+          }
+      } else {
+          let arr = make_img_mem1d(img, vect_factor);
+          let others = make_img_fifo2d(img, height - 1, vect_factor);
+          Fifo2D {
+              read : @|x, y| if y == height - 1 { arr.read(x) }
+                             else               { others.read(x, y) },
+              shift : @|col, row| { arr.get((col + row * arr.stride) + (height - 1) * arr.stride);
+                                    others.shift(col, row); },
+              height : height,
+              width  : 1,
+              vect_factor: vect_factor
+          }
+      }
+}
+
+
+type Swin2D = fn(Read2d) -> Fifo2D;
+fn @make_sliding_window(width: i32, height: i32, vect_factor: i32) -> Swin2D {
+    |read_new| {
+        let swin = make_regs2d(width, height);
+
+        fn @shift(col: i32, row: i32) -> () {
+            // Shift sliding window
+            for j in unroll(0, height) {
+                for i in unroll(0, width - vect_factor) {
+                    swin.write(i, j, swin.read(i + vect_factor, j));
+                }
+            }
+
+            // Read new col
+            for j in unroll(0, height) {
+                for i in unroll(0, vect_factor) {
+                    swin.write((i + width - vect_factor), j, read_new(i, j));
+                }
+            }
+        }
+
+        new_fifo2d(width, height, vect_factor, shift, swin.read)
+    }
+}
+
+fn @pipeline_range(ii: i32, lower: i32, upper: i32, step: i32, body: fn(i32) -> ()) -> () {
+    let mut gidx = 0;
+    for idx in pipeline(ii, lower, upper / step) {
+        body(gidx);
+        gidx = gidx + step;
+    }
+}
+
+// directly reads from image
+fn make_local_with_swin(vect_factor: int, stencil: Stencil) -> fn(Img, Img) -> () {
+    @ |arr_im, out| {
+        let delay = round_up(stencil.extents.x, vect_factor); // initial delay from sliding window
+        let swin_width = stencil.extents.x + vect_factor + delay;
+        let swin_height = stencil.extents.y * 2 + 1;
+
+        let arr = make_img_rand_mem2d(arr_im);
+        let swin = (make_sliding_window(swin_width, swin_height, vect_factor))(arr.read);
+
+        // TODO: assert(round_up(width, vect_factor) != width)
+        let size = arr.height * arr.width;
+        for gidx in pipeline_range(1, 0, size + delay, vect_factor) {
+            arr.get(gidx, -stencil.extents.y); // read addr from image (offset between img and swin)
+            swin.shift(0, 0);                   // col, row
+
+            if(gidx > delay - 1) {
+                for i in unroll(0, vect_factor) {
+                    img_write(out, gidx - delay + i, stencil.op(swin.read, stencil.extents.x + i, stencil.extents.y));
+                }
+            }
+        }
+    }
+}
+
+// uses make_img_fifo2d for vectorized image read
+fn make_local_with_fifo2d_swin(vect_factor: int, stencil: Stencil) -> fn(Img, Img) -> () {
+    @ |arr_im, out_im| {
+        let mask_height = stencil.extents.y * 2 + 1;
+        let fifo2d = make_img_fifo2d(arr_im, mask_height, vect_factor);
+        let out = make_img_mem1d(out_im, vect_factor);
+
+        let delay = round_up(stencil.extents.x, vect_factor) / vect_factor; // initial delay from sliding window
+        let swin_width = stencil.extents.x + (1 + delay) * vect_factor;
+        let swin = (make_sliding_window(swin_width, mask_height, vect_factor))(fifo2d.read);
+
+        let mut col = 0;
+        for idx in pipeline(1, 0, out.height * out.stride + delay) {
+            if (idx < out.height * out.stride) { out.get(idx); }
+
+            fifo2d.shift(idx, -stencil.extents.y); // read addr from image (offset between img and swin)
+            swin.shift(0, 0);                      // col, row
+            for i in unroll(0, vect_factor) {
+                out.write(i, stencil.op(swin.read, stencil.extents.x + i, stencil.extents.y));
+            }
+
+            col++;
+            if col == out.stride { col = 0; }
+
+            if (idx > delay - 1) { out.set(idx - delay); }
+        }
+    }
+}
+
+
+fn main() -> i32 {
+    let width  = 1024;
+    let height = 1024;
+
+    let fpga = get_fpga_backend(use_hls);
+
+    let vect_factor = 4;
+    let arr = create_host_img(width, height, vect_factor);
+    let out = create_host_img(width, height, vect_factor);
+    for i in range(0, size_img(arr)) {
+        img_write(arr, i, i as pixel_t);
+        img_write(out, i, 0 as pixel_t);
+    }
+
+    let filter = stencil(@|read, x, y| {
+        (1 * read(x, y - 2) + 4 * read(x, y - 1) + 7 * read(x + 1, y - 1) +
+         2 * read(x, y    ) + 5 * read(x, y    ) + 8 * read(x + 1, y    ) +
+         3 * read(x, y + 1) + 6 * read(x, y + 1) + 9 * read(x + 1, y + 2)) / 25}, extents(2, 2));
+
+    //let operator = make_local_with_swin(vect_factor, filter);
+    let operator = make_local_with_fifo2d_swin(vect_factor, filter);
+    host2host(fpga, arr, out, operator);
+
+    let roi_disp = (0, 0); //(width - 10, height - 10);
+    let offset = (filter.extents.x, filter.extents.y);
+    let passed = check_with_ref(arr, out, |x, y| {filter.op(get_img_read2d(arr), x, y)}, roi_disp, offset);
+
+    release_img(arr);
+    release_img(out);
+
+    if passed >= 256 { 255 } else { passed }
+}
