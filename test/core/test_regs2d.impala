@@ -1,0 +1,24 @@
+type T = i32;
+
+fn main(argc: i32, argv: &[&[u8]]) -> i32 {
+    let width = 5;
+    let height = 3;
+    let regs = make_regs2d(width, height);
+
+    for j in range(0, height) {
+        for i in range(0, width) {
+            regs.write(i, j, j * i as T);
+        }
+    }
+
+    let mut passed = 0;
+    for j in range(0, height) {
+        for i in range(0, width) {
+            if regs.read(i, j) != i * j as T {
+                passed = 10 + i;
+            }
+        }
+    }
+
+    passed
+}

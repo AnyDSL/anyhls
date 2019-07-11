@@ -1,0 +1,28 @@
+struct Regs2D {
+    read   : fn(i32, i32) -> T,
+    write  : fn(i32, i32, T) -> (),
+    width  : i32,
+    height : i32
+}
+
+fn @(?height) make_regs2d(width: i32, height: i32) -> Regs2D {
+    if height == 0 {
+        Regs2D {
+            read   : @|_, _| undef[T](),
+            write  : @|_, _, _| (),
+            width  : width,
+            height : height
+        }
+    } else {
+        let regs1d = make_regs1d(width);
+        let others = make_regs2d(width, height - 1);
+        Regs2D {
+            read  : @|x, y|    if y + 1 == height { regs1d.read(x) }
+                               else               { others.read(x, y) },
+            write : @|x, y, v| if y + 1 == height { regs1d.write(x, v) }
+                               else               { others.write(x, y, v) },
+            width  : width,
+            height : height
+        }
+    }
+}
