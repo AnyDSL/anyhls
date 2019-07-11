@@ -4,53 +4,6 @@ static use_hls = false;
 
 fn @print_pixel(val: pixel_t) -> () { print_i32(val) };
 
-fn @make_linebuf1D_vec4(read_new: Read, width: int) -> Fifo1D {
-    let mut value = [ 0 as pixel_t, .. 4 ];
-    let lbuf = reserve_shared[[pixel_t * 4]](width);
-
-    fn @read(idx: int) -> pixel_t { value(idx) }
-
-    fn @shift(col: int) -> () {
-        // TODO: assert( col > width)
-        value     = lbuf(col);
-        let dlbin = [read_new(0), read_new(1), read_new(2), read_new(3)];
-        lbuf(col) = dlbin;
-    }
-
-    new_Fifo1D(width, 4, shift, read)
-}
-
-type LineBuf1D = fn (Read) -> Fifo2D;
-
-// Holds (height - 1) image lines
-fn @make_linebuf2D(width: i32, height: i32, vect_factor: i32) -> LineBuf1D {
-    |read_new| {
-      if height == 1 {
-          Fifo2D {
-              read   : @|x, y| if y == 0 { read_new(x) }
-                               else      { undef[pixel_t]() },
-              shift  : @|_, _| (),
-              height : height,
-              width  : width,
-              vect_factor: vect_factor
-          }
-      } else {
-          let lbuf1d = make_linebuf1D_vec4(read_new, width);
-          let lbuf2d = (make_linebuf2D(width, height - 1, vect_factor))(lbuf1d.read);
-          Fifo2D {
-              read : @|x, y| if y == height - 1 { read_new(x) }
-                             else               { lbuf2d.read(x, y) },
-              shift : @|col, row| { lbuf1d.shift($col);
-                                    lbuf2d.shift($col, $row) },
-              height : height,
-              width  : width,
-              vect_factor: vect_factor
-          }
-      }
-    }
-}
-
-
 fn make_local_with_mem_lbuf(vect_factor: int, stencil: Stencil) -> fn(Img, Img) -> () {
     @ |arr_im, out_im| {
         let arr = make_img_mem1d(arr_im, vect_factor);
@@ -58,7 +11,7 @@ fn make_local_with_mem_lbuf(vect_factor: int, stencil: Stencil) -> fn(Img, Img) 
 
         let mask_height = stencil.extents.y * 2 + 1;
 
-        let lbuf = (make_linebuf2D(arr.stride, mask_height, vect_factor))(arr.read);
+        let lbuf = (make_linebuf2d(arr.stride, mask_height, vect_factor))(arr.read);
         let delay = arr.stride * stencil.extents.y; // initial delay from line buffer
 
         let mut col = 0;

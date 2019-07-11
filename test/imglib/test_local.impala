@@ -4,10 +4,11 @@ static use_hls = false;
 
 fn @print_pixel(val: pixel_t) -> () { print_i32(val) };
 
+
 // loop pipelining: yes
 // vectorized mem acces: no
 // onchip-mem: none,
-fn make_local_op_naive(vect_factor: int, stencil: Stencil) -> Operator {
+fn make_local_naive(vect_factor: int, stencil: Stencil) -> Operator {
     @ |arr, out| {
         let read = get_img_read2d(arr);
         for y in pipeline(1, 0, arr.height) {
@@ -16,6 +17,42 @@ fn make_local_op_naive(vect_factor: int, stencil: Stencil) -> Operator {
                     img_write2d(out, x + i, y, stencil.op(read, x + i, y));
                 }
             }
+        }
+    }
+}
+
+fn make_local(vect_factor: int, stencil: Stencil) -> Operator {
+    @ |arr_im, out_im| {
+        let arr = make_img_mem1d(arr_im, vect_factor);
+        let out = make_img_mem1d(out_im, vect_factor);
+
+        let mask_height = stencil.extents.y * 2 + 1;
+
+        let delay_lbuf = arr.stride * stencil.extents.y; // initial delay from line buffer
+        let lbuf = (make_linebuf2d(arr.stride, mask_height, vect_factor))(arr.read);
+
+        let delay_swin = round_up(stencil.extents.x, vect_factor) / vect_factor; // initial delay from sliding window
+        let swin_width = stencil.extents.x + (1 + delay_swin) * vect_factor;
+        let swin = (make_sliding_window(swin_width, mask_height, vect_factor))(lbuf.read);
+
+        let delay = delay_lbuf + delay_swin;
+
+        let mut col = 0;
+        for idx in pipeline(1, 0, arr.height * arr.stride + delay) {
+            if (idx < arr.height * arr.stride) {
+                arr.get(idx);   // read addr from image
+            }
+            lbuf.shift(col, 0); // read addr from lbuf1Ds (col < lbuf.width, row = 0)
+            swin.shift(0, 0);   // read addr from lbuf2D
+
+            for i in unroll(0, vect_factor) {
+                out.write(i, stencil.op(swin.read, stencil.extents.x + i, stencil.extents.y));
+            }
+
+            col++;
+            if col == arr.stride { col = 0; }
+
+            if (idx > delay - 1) { out.set(idx - delay); }
         }
     }
 }
@@ -40,7 +77,8 @@ fn main() -> i32 {
          2 * read(x, y    ) + 5 * read(x, y    ) + 8 * read(x + 1, y    ) +
          3 * read(x, y + 1) + 6 * read(x, y + 1) + 9 * read(x + 1, y + 1)) / 25}, extents(1, 1));
 
-    let operator = make_local_op_naive(vect_factor, filter);
+    //let operator = make_local_naive(vect_factor, filter);
+    let operator = make_local(vect_factor, filter);
     host2host(fpga, arr, out, operator);
 
     let roi_disp = (0, 0); // (width - 10, height - 10)

@@ -1,6 +1,9 @@
 // Stencils
 type Read   = fn(i32) -> pixel_t;
 type Read2d = fn(i32, i32) -> pixel_t;
+type Write  = fn(i32, pixel_t) -> ();
+type Write2d = fn(i32, i32, pixel_t) -> ();
+
 type StencilOp = fn(Read2d, i32, i32) -> pixel_t;
 
 struct Extents {

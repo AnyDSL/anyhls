@@ -1,34 +1,8 @@
 type pixel_t = i32;
-type T = pixel_t;
 type channel = channel_i32;
 static use_hls = false;
 
 fn @print_pixel(val: pixel_t) -> () { print_i32(val) };
-
-type Swin2D = fn(Read2d) -> Fifo2D;
-fn @make_sliding_window(width: i32, height: i32, vect_factor: i32) -> Swin2D {
-    |read_new| {
-        let swin = make_regs2d(width, height);
-
-        fn @shift(col: i32, row: i32) -> () {
-            // Shift sliding window
-            for j in unroll(0, height) {
-                for i in unroll(0, width - vect_factor) {
-                    swin.write(i, j, swin.read(i + vect_factor, j));
-                }
-            }
-
-            // Read new col
-            for j in unroll(0, height) {
-                for i in unroll(0, vect_factor) {
-                    swin.write((i + width - vect_factor), j, read_new(i, j));
-                }
-            }
-        }
-
-        new_fifo2d(width, height, vect_factor, shift, swin.read)
-    }
-}
 
 // vectorized data read: no (make_img_rand_mem2d)
 fn make_local_with_swin(vect_factor: int, stencil: Stencil) -> fn(Img, Img) -> () {

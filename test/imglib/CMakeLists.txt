@@ -8,6 +8,7 @@ set(ANYHLS_CORE_FILES
     ${PROJECT_SOURCE_DIR}/src/core/regs2d.impala)
 
 set(ANYHLS_COMMON_FILES
+    ${ANYHLS_CORE_FILES}
     ${PROJECT_SOURCE_DIR}/src/utils.impala
     ${PROJECT_SOURCE_DIR}/src/imglib/img.impala
     ${PROJECT_SOURCE_DIR}/src/imglib/mem.impala
@@ -35,7 +36,7 @@ anydsl_runtime_wrap(TEST_LBUF CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_F
 add_executable(test_lbuf ${TEST_LBUF})
 target_link_libraries(test_lbuf ${ANYDSL_RUNTIME_LIBRARIES})
 
-anydsl_runtime_wrap(TEST_SWIN CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${ANYHLS_CORE_FILES} ${ANYHLS_COMMON_FILES} test_swin.impala)
+anydsl_runtime_wrap(TEST_SWIN CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${ANYHLS_COMMON_FILES} test_swin.impala)
 add_executable(test_swin ${TEST_SWIN})
 target_link_libraries(test_swin ${ANYDSL_RUNTIME_LIBRARIES})
 

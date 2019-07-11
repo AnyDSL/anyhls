@@ -1,3 +1,5 @@
+type T = pixel_t;
+
 struct Fifo1D {
     read    : fn(i32) -> pixel_t,
     shift   : fn(i32) -> (),
@@ -13,8 +15,15 @@ struct Fifo2D {
     vect_factor : i32
 }
 
+type LineBuf1D = fn (Read) -> Fifo1D;
+
+type LineBuf2D = fn (Read) -> Fifo2D;
+
+type Swin2D = fn(Read2d) -> Fifo2D;
+
+
 // API
-fn @new_Fifo1D(width: i32, vect_factor: i32, shift: fn(i32) -> (), read: fn(i32) -> pixel_t) -> Fifo1D {
+fn @new_fifo1d(width: i32, vect_factor: i32, shift: fn(i32) -> (), read: fn(i32) -> pixel_t) -> Fifo1D {
     Fifo1D { width: width, vect_factor: vect_factor, shift: shift, read: read }
 }
 
@@ -22,28 +31,190 @@ fn @new_fifo2d(width: i32, height: i32, vect_factor: i32, shift: fn(i32, i32) ->
     Fifo2D { width: width, height: height, vect_factor: vect_factor, shift: shift, read: read }
 }
 
-// utilizes a register array to read from image
-fn make_img_fifo2d(img: Img, height: i32, vect_factor: i32) -> Fifo2D {
-      if height == 0 {
+// Holds (height - 1) image lines
+fn @make_linebuf1d(width: i32, vect_factor: i32) -> LineBuf1D {
+    |read_new| {
+        match vect_factor {
+             1 => make_line_buf1d_vec1 (read_new, width),
+             2 => make_line_buf1d_vec2 (read_new, width),
+             4 => make_line_buf1d_vec4 (read_new, width),
+             8 => make_line_buf1d_vec8 (read_new, width),
+            16 => make_line_buf1d_vec16(read_new, width),
+            32 => make_line_buf1d_vec32(read_new, width),
+             _ => undef[Fifo1D]()
+        }
+    }
+}
+
+fn @make_linebuf2d(width: i32, height: i32, vect_factor: i32) -> LineBuf2D {
+    |read_new| {
+      if height == 1 {
           Fifo2D {
-              read   : @|x, y| undef[pixel_t](),
+              read   : @|x, y| if y == 0 { read_new(x) }
+                               else      { undef[pixel_t]() },
               shift  : @|_, _| (),
               height : height,
-              width  : 1,
+              width  : width,
               vect_factor: vect_factor
           }
       } else {
-          let arr = make_img_mem1d(img, vect_factor);
-          let others = make_img_fifo2d(img, height - 1, vect_factor);
+          let lbuf1d = (make_linebuf1d(width, vect_factor))(read_new);
+          let lbuf2d = (make_linebuf2d(width, height - 1, vect_factor))(lbuf1d.read);
           Fifo2D {
-              read : @|x, y| if y == height - 1 { arr.read(x) }
-                             else               { others.read(x, y) },
-              shift : @|col, row| { arr.get((col + row * arr.stride) + (height - 1) * arr.stride);
-                                    others.shift(col, row); },
+              read : @|x, y| if y == height - 1 { read_new(x) }
+                             else               { lbuf2d.read(x, y) },
+              shift : @|col, row| { lbuf1d.shift($col);
+                                    lbuf2d.shift($col, $row) },
               height : height,
-              width  : 1,
+              width  : width,
               vect_factor: vect_factor
           }
       }
+    }
 }
 
+fn @make_sliding_window(width: i32, height: i32, vect_factor: i32) -> Swin2D {
+    |read_new| {
+        let swin = make_regs2d(width, height);
+
+        fn @shift(col: i32, row: i32) -> () {
+            // Shift sliding window
+            for j in unroll(0, height) {
+                for i in unroll(0, width - vect_factor) {
+                    swin.write(i, j, swin.read(i + vect_factor, j));
+                }
+            }
+
+            // Read new col
+            for j in unroll(0, height) {
+                for i in unroll(0, vect_factor) {
+                    swin.write((i + width - vect_factor), j, read_new(i, j));
+                }
+            }
+        }
+
+        new_fifo2d(width, height, vect_factor, shift, swin.read)
+    }
+}
+
+fn make_img_fifo2d(img: Img, height: i32, vect_factor: i32) -> Fifo2D {
+    // utilizes a register array to read from image
+    if height == 0 {
+        Fifo2D {
+            read   : @|x, y| undef[pixel_t](),
+            shift  : @|_, _| (),
+            height : height,
+            width  : 1,
+            vect_factor: vect_factor
+        }
+    } else {
+        let arr = make_img_mem1d(img, vect_factor);
+        let others = make_img_fifo2d(img, height - 1, vect_factor);
+        Fifo2D {
+            read : @|x, y| if y == height - 1 { arr.read(x) }
+                           else               { others.read(x, y) },
+            shift : @|col, row| { arr.get((col + row * arr.stride) + (height - 1) * arr.stride);
+                                  others.shift(col, row); },
+            height : height,
+            width  : 1,
+            vect_factor: vect_factor
+        }
+    }
+}
+
+
+// helper functions
+fn @make_line_buf1d_vec1(read_new: Read, width: int) -> Fifo1D {
+    let mut value = 0 as pixel_t;
+    let lbuf = reserve_shared[pixel_t](width);
+
+    fn @read(idx: int) -> pixel_t { value }
+    fn @shift(col: int) -> () {
+        // TODO: assert( col > width)
+        value     = lbuf(col);
+        lbuf(col) = read_new(0);
+    }
+
+    new_fifo1d(width, 1, shift, read)
+}
+
+fn @make_line_buf1d_vec2(read_new: Read, width: int) -> Fifo1D {
+    let mut value = [ 0 as pixel_t, .. 2 ];
+    let lbuf = reserve_shared[[pixel_t * 2]](width);
+
+    fn @read(idx: int) -> pixel_t { value(idx) }
+    fn @shift(col: int) -> () {
+        value     = lbuf(col);
+        let dlbin = [read_new(0), read_new(1)];
+        lbuf(col) = dlbin;
+    }
+
+    new_fifo1d(width, 2, shift, read)
+}
+
+fn @make_line_buf1d_vec4(read_new: Read, width: int) -> Fifo1D {
+    let mut value = [ 0 as pixel_t, .. 4 ];
+    let lbuf = reserve_shared[[pixel_t * 4]](width);
+
+    fn @read(idx: int) -> pixel_t { value(idx) }
+    fn @shift(col: int) -> () {
+        value     = lbuf(col);
+        let dlbin = [read_new(0), read_new(1), read_new(2), read_new(3)];
+        lbuf(col) = dlbin;
+    }
+
+    new_fifo1d(width, 4, shift, read)
+}
+
+fn @make_line_buf1d_vec8(read_new: Read, width: int) -> Fifo1D {
+    let mut value = [ 0 as pixel_t, .. 8 ];
+    let lbuf = reserve_shared[[pixel_t * 8]](width);
+
+    fn @read(idx: int) -> pixel_t { value(idx) }
+    fn @shift(col: int) -> () {
+        value     = lbuf(col);
+        let dlbin = [read_new(0), read_new(1), read_new(2), read_new(3),
+                     read_new(4), read_new(5), read_new(6), read_new(7)];
+        lbuf(col) = dlbin;
+    }
+
+    new_fifo1d(width, 8, shift, read)
+}
+
+fn @make_line_buf1d_vec16(read_new: Read, width: int) -> Fifo1D {
+    let mut value = [ 0 as pixel_t, .. 16 ];
+    let lbuf = reserve_shared[[pixel_t * 16]](width);
+
+    fn @read(idx: int) -> pixel_t { value(idx) }
+    fn @shift(col: int) -> () {
+        value     = lbuf(col);
+        let dlbin = [read_new(0), read_new(1), read_new(2), read_new(3),
+                     read_new(4), read_new(5), read_new(6), read_new(7),
+                     read_new(8), read_new(9), read_new(10), read_new(11),
+                     read_new(12), read_new(13), read_new(14), read_new(15)];
+        lbuf(col) = dlbin;
+    }
+
+    new_fifo1d(width, 16, shift, read)
+}
+
+fn @make_line_buf1d_vec32(read_new: Read, width: int) -> Fifo1D {
+    let mut value = [ 0 as pixel_t, .. 32 ];
+    let lbuf = reserve_shared[[pixel_t * 32]](width);
+
+    fn @read(idx: int) -> pixel_t { value(idx) }
+    fn @shift(col: int) -> () {
+        value     = lbuf(col);
+        let dlbin = [read_new(0),  read_new(1),  read_new(2),  read_new(3),
+                     read_new(4),  read_new(5),  read_new(6),  read_new(7),
+                     read_new(8),  read_new(9),  read_new(10), read_new(11),
+                     read_new(12), read_new(13), read_new(14), read_new(15),
+                     read_new(16), read_new(17), read_new(18), read_new(19),
+                     read_new(20), read_new(21), read_new(22), read_new(23),
+                     read_new(24), read_new(25), read_new(26), read_new(27),
+                     read_new(28), read_new(29), read_new(30), read_new(31)];
+        lbuf(col) = dlbin;
+    }
+
+    new_fifo1d(width, 32, shift, read)
+}
