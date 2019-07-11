@@ -1,0 +1,7 @@
+fn @pipeline_range(ii: i32, lower: i32, upper: i32, step: i32, body: fn(i32) -> ()) -> () {
+    let mut gidx = 0;
+    for idx in pipeline(ii, lower, upper / step) {
+        body(gidx);
+        gidx = gidx + step;
+    }
+}

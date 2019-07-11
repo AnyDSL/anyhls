@@ -4,26 +4,6 @@ static use_hls = false;
 
 fn @print_pixel(val: pixel_t) -> () { print_i32(val) };
 
-struct Fifo1D {
-    read    : fn(i32) -> pixel_t,
-    shift   : fn(i32) -> (),
-    width   : i32,
-    vect_factor : i32
-}
-
-struct Fifo2D {
-    read   : fn(i32, i32) -> pixel_t,
-    shift  : fn(i32, i32) -> (),
-    width  : i32,
-    height : i32,
-    vect_factor : i32
-}
-
-fn @new_Fifo1D(width: i32, vect_factor: i32, shift: fn(i32) -> (), read: fn(i32) -> pixel_t) -> Fifo1D {
-    Fifo1D { width: width, vect_factor: vect_factor, shift: shift, read: read }
-}
-
-
 fn @make_linebuf1D_vec4(read_new: Read, width: int) -> Fifo1D {
     let mut value = [ 0 as pixel_t, .. 4 ];
     let lbuf = reserve_shared[[pixel_t * 4]](width);

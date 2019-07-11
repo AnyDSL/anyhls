@@ -11,6 +11,8 @@ set(ANYHLS_COMMON_FILES
     ${PROJECT_SOURCE_DIR}/src/utils.impala
     ${PROJECT_SOURCE_DIR}/src/imglib/img.impala
     ${PROJECT_SOURCE_DIR}/src/imglib/mem.impala
+    ${PROJECT_SOURCE_DIR}/src/imglib/fifo.impala
+    ${PROJECT_SOURCE_DIR}/src/imglib/loops.impala
     ${PROJECT_SOURCE_DIR}/src/imglib/alg.impala
     ${PROJECT_SOURCE_DIR}/src/imglib/dataflow.impala)
 
