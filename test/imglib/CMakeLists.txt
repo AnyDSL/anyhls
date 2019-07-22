@@ -44,9 +44,14 @@ anydsl_runtime_wrap(TEST_LOCAL CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_
 add_executable(test_local ${TEST_LOCAL})
 target_link_libraries(test_local ${ANYDSL_RUNTIME_LIBRARIES})
 
+anydsl_runtime_wrap(TEST_LOCAL_FSM CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${ANYHLS_FILES} ${PROJECT_SOURCE_DIR}/src/core/fsm.impala test_local_fsm.impala)
+add_executable(test_local_fsm ${TEST_LOCAL_FSM})
+target_link_libraries(test_local_fsm ${ANYDSL_RUNTIME_LIBRARIES})
+
 add_test(NAME host2host COMMAND test_host2host)
 add_test(NAME img_mem1d COMMAND test_img_mem1d)
 add_test(NAME point     COMMAND test_point)
 add_test(NAME lbuf      COMMAND test_lbuf)
 add_test(NAME swin      COMMAND test_swin)
 add_test(NAME local     COMMAND test_local)
+add_test(NAME local_fsm COMMAND test_local_fsm)

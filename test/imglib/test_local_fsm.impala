@@ -1,0 +1,86 @@
+type pixel_t = i32;
+type channel = channel_i32;
+type State = i32;
+static use_hls = false;
+
+fn @print_pixel(val: pixel_t) -> () { print_i32(val) };
+
+// Uses the core/fsm: loop upper = (# of States) * upper
+fn make_local_fsm(vect_factor: int, stencil: Stencil) -> Operator {
+    @ |arr_im, out_im| {
+        let arr = make_img_mem1d(arr_im, vect_factor);
+        let out = make_img_mem1d(out_im, vect_factor);
+
+        // onchip mem
+        let mask_height = stencil.extents.y * 2 + 1;
+        let delay_lbuf = arr.stride * stencil.extents.y; // initial delay from line buffer
+        let lbuf = (make_linebuf2d(arr.stride, mask_height, vect_factor))(arr.read);
+
+        let delay_swin = round_up(stencil.extents.x, vect_factor) / vect_factor; // initial delay from sliding window
+        let swin_width = stencil.extents.x + (1 + delay_swin) * vect_factor;
+        let swin = (make_sliding_window(swin_width, mask_height, vect_factor))(lbuf.read);
+
+        let delay = delay_lbuf + delay_swin;
+        let size = arr.height * arr.stride;
+
+        // fsm
+        let mut col = 0;
+        let mut idx = 0;
+
+        let fsm = make_fsm();
+        fsm.add(1, || arr.get(idx), || 2); // read
+
+        fsm.add(2, || { lbuf.shift(col, 0);
+                        swin.shift(0, 0);
+                        for i in unroll(0, vect_factor) {
+                            out.write(i, stencil.op(swin.read, stencil.extents.x + i, stencil.extents.y));
+                        }
+        },
+            || if idx > delay - 1 { 3 } else { 4 }); // compute
+
+        fsm.add(3, || out.set(idx - delay), || 4); //write
+
+        fsm.add(4, || {
+            idx++;
+            col++;
+            if col == arr.stride { col = 0; }
+        },
+            || if idx < arr.height * arr.stride { 1 } else { 2 } // index arith
+        );
+
+        fsm.run_pipelined(1, 1, 0, 4 * size + delay);
+    }
+}
+
+
+fn main() -> i32 {
+    let width  = 1024;
+    let height = 1024;
+
+    let fpga = get_fpga_backend(use_hls);
+
+    let vect_factor = 4;
+    let arr = create_host_img(width, height, vect_factor);
+    let out = create_host_img(width, height, vect_factor);
+    for i in range(0, size_img(arr)) {
+        img_write(arr, i, i as pixel_t);
+        img_write(out, i, 0 as pixel_t);
+    }
+
+    let filter = stencil(@|read, x, y| {
+        (1 * read(x, y - 1) + 4 * read(x, y - 1) + 7 * read(x + 1, y - 1) +
+         2 * read(x, y    ) + 5 * read(x, y    ) + 8 * read(x + 1, y    ) +
+         3 * read(x, y + 1) + 6 * read(x, y + 1) + 9 * read(x + 1, y + 1)) / 25}, extents(1, 1));
+
+    let operator = make_local_fsm(vect_factor, filter);
+    host2host(fpga, arr, out, operator);
+
+    let roi_disp = (0, 0); // (width - 10, height - 10);
+    let offset = (filter.extents.x, filter.extents.y);
+    let passed = check_with_ref(arr, out, |x, y| {filter.op(get_img_read2d(arr), x, y)}, roi_disp, offset);
+
+    release_img(arr);
+    release_img(out);
+
+    if passed >= 256 { 255 } else { passed }
+}
