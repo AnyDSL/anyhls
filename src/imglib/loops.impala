@@ -1,13 +1,11 @@
 type Loop = fn(i32, i32, fn(i32) -> ()) -> ();
 
-
 struct PipelinedLoopSchedule {
   read: fn(i32) -> (),
   write: fn(i32) -> (),
   compute: fn(i32) -> (),
   init_delay: i32
 }
-
 
 fn loop_pipeline(ii: i32, sched: PipelinedLoopSchedule) -> Loop {
     @ |lower, upper, body| {
@@ -27,14 +25,17 @@ fn loop_pipeline(ii: i32, sched: PipelinedLoopSchedule) -> Loop {
     }
 }
 
-fn @pipeline_range(ii: i32, lower: i32, upper: i32, step: i32, body: fn(i32) -> ()) -> () {
+fn pipeline_range(ii:i32) -> Loop {
+    @ |lower, upper, body| pipeline(ii, lower, upper, body)
+}
+
+fn @pipeline_range_step(ii: i32, lower: i32, upper: i32, step: i32, body: fn(i32) -> ()) -> () {
     let mut gidx = 0;
     for idx in pipeline(ii, lower, upper / step) {
         body(gidx);
         gidx = gidx + step;
     }
 }
-
 
 // helper functions
 fn @if_check(cond: bool, check: bool, body: fn() ->()) -> () {

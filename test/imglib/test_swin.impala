@@ -4,6 +4,14 @@ static use_hls = false;
 
 fn @print_pixel(val: pixel_t) -> () { print_i32(val) };
 
+fn @pipeline_range_step(ii: i32, lower: i32, upper: i32, step: i32, body: fn(i32) -> ()) -> () {
+    let mut gidx = 0;
+    for idx in pipeline(ii, lower, upper / step) {
+        body(gidx);
+        gidx = gidx + step;
+    }
+}
+
 // vectorized data read: no (make_img_rand_mem2d)
 fn make_local_with_swin(vect_factor: int, stencil: Stencil) -> fn(Img, Img) -> () {
     @ |arr_im, out| {
@@ -16,7 +24,7 @@ fn make_local_with_swin(vect_factor: int, stencil: Stencil) -> fn(Img, Img) -> (
 
         // TODO: assert(round_up(width, vect_factor) != width)
         let size = arr.height * arr.width;
-        for gidx in pipeline_range(1, 0, size + delay, vect_factor) {
+        for gidx in pipeline_range_step(1, 0, size + delay, vect_factor) {
             arr.get(gidx, -stencil.extents.y); // read addr from image (offset between img and swin)
             swin.shift(0, 0);                   // col, row
 
