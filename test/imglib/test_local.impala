@@ -57,45 +57,57 @@ fn make_local_simple(vect_factor: int, stencil: Stencil) -> Operator {
     }
 }
 
+struct OperatorSchedule {
+    read  : fn(i32, i32) -> pixel_t,
+    write : fn(i32, i32, pixel_t) -> (),
+    at    : fn(i32, BinOp) -> (),
+    delay : i32
+}
+
+fn @make_fac_schedule(arr: Mem1D, out: Mem1D, extents: Extents, vect_factor: i32) -> OperatorSchedule {
+    let lbuf_width = arr.stride;
+    let win_height = extents.y * 2 + 1;
+
+    let delay_lbuf = lbuf_width * extents.y; // initial delay from line buffer
+    let delay_swin = round_up(extents.x, vect_factor) / vect_factor; // initial delay from sliding window
+    let swin_width = extents.x + (1 + delay_swin) * vect_factor;
+
+    let lbuf = (make_linebuf2d(lbuf_width, win_height, vect_factor))(arr.read);
+    let swin = (make_sliding_window(swin_width, win_height, vect_factor))(lbuf.read);
+
+    let mut col = 0;
+    let shift = || {
+          lbuf.shift(col, 0); // read addr from lbuf1Ds (col < lbuf.lbuf_width, row = 0)
+          swin.shift(0, 0);   // read addr from lbuf2D
+          col++;
+          if col == lbuf_width { col = 0; }
+    };
+
+    OperatorSchedule {
+        delay: delay_lbuf + delay_swin,
+        read:  @|i:i32, j:i32| { swin.read(extents.x + i, extents.y + j) },
+        write: @|i:i32, j:i32, val:pixel_t| { out.write(i, val) },
+        at: @|idx: i32, body: BinOp| {
+            shift();
+            for i, j in par(vect_factor, 1) { body(i, j) };
+        }
+    }
+}
+
+
 fn make_local(vect_factor: int, stencil: Stencil) -> Operator {
     @ |arr_im, out_im| {
         let arr = make_img_mem1d(arr_im, vect_factor);
         let out = make_img_mem1d(out_im, vect_factor);
 
-        let mask_height = stencil.extents.y * 2 + 1;
+        let comp = make_fac_schedule(arr, out, stencil.extents, vect_factor);
+        let loop = make_loop_pipeline(pipeline_range(1), comp.delay, arr.get, out.set);
 
-        let delay_lbuf = arr.stride * stencil.extents.y; // initial delay from line buffer
-        let lbuf = (make_linebuf2d(arr.stride, mask_height, vect_factor))(arr.read);
-
-        let delay_swin = round_up(stencil.extents.x, vect_factor) / vect_factor; // initial delay from sliding window
-        let swin_width = stencil.extents.x + (1 + delay_swin) * vect_factor;
-        let swin = (make_sliding_window(swin_width, mask_height, vect_factor))(lbuf.read);
-
-        let delay = delay_lbuf + delay_swin;
-
-
-        let mut col = 0;
-        let schedule = PipelinedLoopSchedule {
-            read: arr.get,
-            write: out.set,
-            compute: |idx| {
-                // ------------- FIFO
-                lbuf.shift(col, 0); // read addr from lbuf1Ds (col < lbuf.width, row = 0)
-                swin.shift(0, 0);   // read addr from lbuf2D
-                col++;
-                if col == arr.stride { col = 0; }
-                // ---------------
-
-                // WRITE {input (Mem1D)}, READ2D {output (Mem2D, FIFO2D)}, Stencil(op, extent), vect_factor
-                for i in unroll(0, vect_factor) {
-                    out.write(i, stencil.op(swin.read, stencil.extents.x + i, stencil.extents.y));
-                }
-            },
-            init_delay: delay
-        };
-
-        let schedule_fpga = loop_pipeline(1, schedule);
-        schedule_fpga(0, arr.height * arr.stride, |_|{});
+        for idx in loop(0, arr.height * arr.stride) {
+            for i, j in comp.at(idx) {
+                comp.write(i, j, stencil.op(comp.read, i, j))
+            }
+        }
     }
 }
 
@@ -120,6 +132,7 @@ fn main() -> i32 {
          3 * read(x, y + 1) + 6 * read(x, y + 1) + 9 * read(x + 1, y + 1)) / 25}, extents(1, 1));
 
     //let operator = make_local_naive(vect_factor, filter);
+    //let operator = make_local_schedule(vect_factor, filter);
     let operator = make_local(vect_factor, filter);
     host2host(fpga, arr, out, operator);
 
