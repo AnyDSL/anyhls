@@ -1,3 +1,4 @@
+static coarsening_policy = FetchAndCalc; //FetchAndCalc_nobh;
 type Operator = fn(Img, Img) -> ();
 
 struct OperatorSchedule {
@@ -25,12 +26,12 @@ fn make_point_op(vect_factor: int, op: StencilOp) -> Operator {
     }
 }
 
-fn make_local_op(vect_factor: int, stencil: Stencil) -> Operator {
+fn make_local_op(vect_factor: int, stencil: Stencil, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> Operator {
     @ |arr_im, out_im| {
         let arr = make_img_mem1d(arr_im, vect_factor);
         let out = make_img_mem1d(out_im, vect_factor);
 
-        let comp = make_fac_schedule(arr, out, stencil.extents, vect_factor);
+        let comp = make_local_schedule(arr, out, stencil.extents, vect_factor, bh_lower, bh_upper);
         let loop = make_loop_pipeline(pipeline_range(1), comp.delay, arr.get, out.set);
 
         for idx in loop(0, arr.height * arr.stride) {
@@ -41,7 +42,13 @@ fn make_local_op(vect_factor: int, stencil: Stencil) -> Operator {
     }
 }
 
-fn @make_fac_schedule(arr: Mem1D, out: Mem1D, extents: Extents, vect_factor: i32) -> OperatorSchedule {
+fn @make_local_schedule(arr: Mem1D, out: Mem1D, extents: Extents, vect_factor: i32, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> OperatorSchedule {
+    let local_schedule = coarsening_policy;
+    local_schedule(arr, out, extents, vect_factor, bh_lower, bh_upper)
+}
+
+
+fn @FetchAndCalc_nobh(arr: Mem1D, out: Mem1D, extents: Extents, vect_factor: i32, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> OperatorSchedule {
     let lbuf_width = arr.stride;
     let win_height = extents.y * 2 + 1;
 
@@ -63,6 +70,60 @@ fn @make_fac_schedule(arr: Mem1D, out: Mem1D, extents: Extents, vect_factor: i32
     OperatorSchedule {
         delay: delay_lbuf + delay_swin,
         read:  @|i:i32, j:i32| { swin.read(extents.x + i, extents.y + j) },
+        write: @|i:i32, j:i32, val:pixel_t| { out.write(i, val) },
+        at: @|idx: i32, body: BinOp| {
+            shift();
+            for i, j in par(vect_factor, 1) { body(i, j) };
+        }
+    }
+}
+
+
+fn @FetchAndCalc(arr: Mem1D, out: Mem1D, extents: Extents, vect_factor: i32, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> OperatorSchedule {
+    let lbuf_stride = arr.stride;
+    let win_height = extents.y * 2 + 1;
+
+    let delay_lbuf = lbuf_stride * extents.y; // initial delay from line buffer
+    let delay_swin = round_up(extents.x, vect_factor) / vect_factor; // initial delay from sliding window
+    let swin_stride = extents.x + (1 + delay_swin) * vect_factor;
+    let swin_width = 2 * extents.x + vect_factor;
+
+    // border handling row selection
+    let input_row_schedule = LoopCircular {
+        interv: Interval1d {start: extents.y,   end: arr.height + extents.y + 1}, // loop index
+        roi  : RoI1d       {  o_x: extents.y, width: arr.height},                 // image region
+        vect_factor: 1
+    };
+    let win_row_bounds = new_bounds(0, extents.y, extents.y + 1, win_height);
+    let row_sel_fun = get_type0_row_sel(input_row_schedule, win_row_bounds);
+
+    // On Chip Memory Architecture
+    let lbuf = (make_linebuf2d(lbuf_stride, win_height, vect_factor))(arr.read);
+    let swin = (make_sliding_window_bh(swin_stride, win_height, vect_factor, row_sel_fun, bh_lower, bh_upper))(lbuf.read);
+
+    // border handling col selection
+    let input_col_schedule = LoopCircular {
+        interv: Interval1d { start: 0,         end: vect_factor * arr.stride }, // loop index
+        roi  :      RoI1d  { o_x: extents.x, width: arr.width },  // image region
+        vect_factor : vect_factor
+    };
+    let right_padding = (vect_factor * arr.stride) - arr.width;
+    let win_col_bounds = new_bounds(0, extents.x, extents.x + vect_factor - right_padding, swin_width);
+    let col_sel = new_type0_col_selection(swin.read, win_height, input_col_schedule, win_col_bounds, bh_lower, bh_upper);
+
+    let mut col = 0;
+    let mut row = 0;
+    let shift = || {
+          lbuf.shift($col, 0);    // read addr from lbuf1Ds (col < lbuf.lbuf_stride, row = 0)
+          swin.shift(0, $row);    // read addr from lbuf2D
+          col_sel.update($col);
+          col++;
+          if col == lbuf_stride { col = 0; row++; }
+    };
+
+    OperatorSchedule {
+        delay: delay_lbuf + delay_swin,
+        read:  @|i:i32, j:i32| { col_sel.read(extents.x + i, extents.y + j) },
         write: @|i:i32, j:i32, val:pixel_t| { out.write(i, val) },
         at: @|idx: i32, body: BinOp| {
             shift();

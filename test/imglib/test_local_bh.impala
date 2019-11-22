@@ -1,0 +1,40 @@
+type pixel_t = i32;
+type channel = channel_i32;
+static use_hls = false;
+
+fn @print_pixel(val: pixel_t) -> () { print_i32(val) };
+
+fn main() -> i32 {
+    let width  = 1024;
+    let height = 1024;
+
+    let fpga = get_fpga_backend(use_hls);
+
+    let vect_factor = 1;
+    let arr = create_host_img(width, height, vect_factor);
+    let out = create_host_img(width, height, vect_factor);
+    for i in range(0, size_img(arr)) {
+        img_write(arr, i, i as pixel_t);
+        img_write(out, i, 0 as pixel_t);
+    }
+
+    let filter = stencil(@|read, x, y| {
+        (1 * read(x, y - 1) + 4 * read(x, y - 1) + 7 * read(x + 1, y - 1) +
+         2 * read(x, y    ) + 5 * read(x, y    ) + 8 * read(x + 1, y    ) +
+         3 * read(x, y + 1) + 6 * read(x, y + 1) + 9 * read(x + 1, y + 1)) / 25}, extents(1, 1));
+
+    //let operator = make_local_naive(vect_factor, filter);
+    //let operator = make_local_simple(vect_factor, filter);
+    let operator = make_local_op(vect_factor, filter, mirror_lower, mirror_upper);
+    host2host(fpga, arr, out, operator);
+
+    let roi_disp = (width - 10, 0); // (0, 0); // (width - 10, height - 10)
+    let offset = (0, 0);
+    let passed = check_with_ref(arr, out, |x, y| {filter.op(get_img_read2d_bh(arr, mirror_lower, mirror_upper), x, y)}, roi_disp, offset);
+    //let passed = check_with_ref(arr, out, |x, y| {filter.op(get_img_read2d_bh(arr, mirror_lower, mirror_upper), x, y)}, roi_disp, offset);
+
+    release_img(arr);
+    release_img(out);
+
+    if passed >= 256 { 255 } else { passed }
+}

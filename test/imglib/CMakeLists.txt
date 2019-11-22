@@ -18,6 +18,7 @@ set(ANYHLS_COMMON_FILES
     ${PROJECT_SOURCE_DIR}/src/imglib/dataflow.impala)
 
 set(ANYHLS_FILES ${ANYHLS_COMMON_FILES}
+    ${PROJECT_SOURCE_DIR}/src/imglib/borderhandling.impala
     ${PROJECT_SOURCE_DIR}/src/imglib/operators.impala)
 
 anydsl_runtime_wrap(TEST_HOST2HOST CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES test_host2host.impala)
@@ -43,6 +44,10 @@ target_link_libraries(test_swin ${ANYDSL_RUNTIME_LIBRARIES})
 anydsl_runtime_wrap(TEST_LOCAL CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${ANYHLS_FILES} test_local.impala)
 add_executable(test_local ${TEST_LOCAL})
 target_link_libraries(test_local ${ANYDSL_RUNTIME_LIBRARIES})
+
+anydsl_runtime_wrap(TEST_LOCAL_BH CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${ANYHLS_FILES} test_local_bh.impala)
+add_executable(test_local_bh ${TEST_LOCAL_BH})
+target_link_libraries(test_local_bh ${ANYDSL_RUNTIME_LIBRARIES})
 
 anydsl_runtime_wrap(TEST_LOCAL_FSM CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${ANYHLS_FILES} ${PROJECT_SOURCE_DIR}/src/core/fsm.impala test_local_fsm.impala)
 add_executable(test_local_fsm ${TEST_LOCAL_FSM})

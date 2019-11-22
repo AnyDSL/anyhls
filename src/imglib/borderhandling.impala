@@ -1,0 +1,400 @@
+type Bounds = (int, int);
+type get_bounds_fun_type = fn(Boundary) -> Bounds;
+type pixel_read_type  = fn(int, int, Boundary, Bounds, fn(int) -> pixel_t) -> pixel_t;
+type row_sel_fun_type = fn(int, brdr_assigns_type) -> ();
+type brdr_assigns_type = fn(int, Boundary, int, int) -> ();
+type BoundaryFn   = fn(i32, i32, i32) -> BoundaryMode;
+
+struct RoI {
+    o_x : i32,
+    o_y : i32,
+    width : i32,
+    height : i32
+}
+
+enum Boundary {
+    Lower, Center, Upper, Unknown
+}
+
+// border handling conditions
+enum BoundaryMode {
+    Index(i32),
+    Const(pixel_t)
+}
+
+fn @nobh_center (idx: i32, lower: i32, upper: i32) -> BoundaryMode { BoundaryMode::Index(idx) }
+
+fn @clamp_lower (idx: i32, lower: i32, upper: i32) -> BoundaryMode {
+    BoundaryMode::Index(if idx < lower { lower } else { idx })
+}
+
+fn @clamp_upper (idx: i32, lower: i32, upper: i32) -> BoundaryMode {
+    BoundaryMode::Index(if idx >= upper { upper - 1 } else { idx })
+}
+
+fn @mirror_lower(idx: i32, lower: i32, upper: i32) -> BoundaryMode {
+    BoundaryMode::Index(if idx < lower { lower + (lower - idx-1) } else { idx })
+}
+
+fn @mirror_upper(idx: i32, lower: i32, upper: i32) -> BoundaryMode {
+    BoundaryMode::Index(if idx >= upper { upper - (idx+1 - upper) } else { idx })
+}
+
+fn @repeat_lower(idx: i32, lower: i32, upper: i32) -> BoundaryMode {
+    BoundaryMode::Index(if idx < lower { idx + (lower + upper) } else { idx })
+}
+
+fn @repeat_upper(idx: i32, lower: i32, upper: i32) -> BoundaryMode {
+    BoundaryMode::Index(if idx >= upper { idx - (lower + upper) } else { idx })
+}
+
+fn @const_lower (idx: i32, lower: i32, upper: i32, cval: pixel_t) -> BoundaryMode {
+    if idx < lower { BoundaryMode::Const(cval) } else { BoundaryMode::Index(idx) }
+}
+
+fn @const_upper (idx: i32, lower: i32, upper: i32, cval: pixel_t) -> BoundaryMode {
+    if idx >= upper { BoundaryMode::Const(cval) } else { BoundaryMode::Index(idx) }
+}
+
+
+// -----------------------------  API ----------------------------------------
+// read from image
+fn get_img_read2d_bh(img: Img, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> fn(i32, i32) -> pixel_t {
+    @|x, y| read_pixel_bh_im(x, y, RoI { o_x : 0, o_y : 0, width : img.width, height : img.height }, @|x, y| {img_read(img, y * img.stride + x)}, bh_lower, bh_upper)
+}
+
+// read from window : row selection
+fn @get_type0_row_sel(loop_schedule: LoopCircular, get_bounds_fun: get_bounds_fun_type) -> row_sel_fun_type {
+    @|idx, brdr_assigns| {
+        for boundary in iterate1d_border() {
+            let bh_type0_fun = bh_type0($idx, boundary, loop_schedule, get_bounds_fun, brdr_assigns);
+        }
+    }
+}
+
+// read from window : col selection
+fn @new_type0_col_selection(read_new: Read2d, win_height: i32, loop_schedule: LoopCircular, get_bounds_fun: get_bounds_fun_type, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> col_selection {
+    let (lower_low, lower_high) = get_bounds_fun(Boundary::Lower);
+    let (upper_low, upper_high) = get_bounds_fun(Boundary::Upper);
+    let lower_regs = new_regs2d((lower_low, 0), (lower_high, win_height));
+    let upper_regs = new_regs2d((upper_low, 0), (upper_high, win_height));
+
+    fn @read_fun(x: int, y: int) -> pixel_t {
+             if x > upper_low - 1 && x < upper_high { upper_regs.read(x, y) }
+        else if x > lower_low - 1 && x < lower_high { lower_regs.read(x, y) }
+        else { read_new(x, y) }
+    }
+
+    fn @write_fun(x: int, y: int, din: pixel_t) -> () {
+        if      x > upper_low - 1 && x < upper_high { upper_regs.write(x, y, din) }
+        else if x > lower_low - 1 && x < lower_high { lower_regs.write(x, y, din) }
+        else {}
+    }
+
+    fn @brdr_assigns(xw: int, boundary: Boundary, lower_high: int, upper_low: int) -> () {
+        for yw in unroll(0, win_height) {
+            fn @get_fun(i: int) -> pixel_t { read_new(i, yw) };
+            let pix_bh = read_pixel_bh(xw, get_fun, boundary, lower_high, upper_low, bh_lower, bh_upper);
+            write_fun(xw, yw, pix_bh);
+        }
+    }
+
+    fn @update(col_ridx: int) -> () {
+        for boundary in iterate1d_atborders() {
+            bh_type0($col_ridx, boundary, loop_schedule, get_bounds_fun, brdr_assigns);
+        }
+    }
+
+    col_selection {
+        read   : read_fun,
+        update : update
+    }
+}
+
+// sliding window
+fn @make_sliding_window_bh(stride: i32, height: i32, vect_factor: i32, row_sel_fun: row_sel_fun_type, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> Swin2D {
+    |read_new| {
+        let swin = make_regs2d(stride, height);
+
+        fn @shift(col: i32, row: i32) -> () {
+            // Shift sliding window
+            for j in unroll(0, height) {
+                for i in unroll(0, stride - vect_factor) {
+                    swin.write(i, j, swin.read(i + vect_factor, j));
+                }
+            }
+
+            fn @brdr_assigns(yw: int, boundary: Boundary, lower_high: int, upper_low: int) -> () {
+                for xw in unroll(0, vect_factor) {
+                    fn @read_fun(y: int) -> pixel_t { read_new(xw, y) };
+                    let pix_bh = read_pixel_bh(yw, read_fun, boundary, lower_high, upper_low, bh_lower, bh_upper);
+                    swin.write(xw + stride - vect_factor, yw, pix_bh)
+                }
+            }
+
+            // Read new col
+            row_sel_fun($row, brdr_assigns);
+        }
+
+        new_fifo2d(stride, height, vect_factor, shift, swin.read)
+    }
+}
+
+
+// ------------------------- Read from Image ---------------------------------
+type Region = (Boundary, Boundary);
+
+fn @map_boundary_mode(mode: BoundaryMode, bh_fun: fn(i32) -> BoundaryMode) -> BoundaryMode {
+    match mode {
+        BoundaryMode::Index(idx) => bh_fun(idx),
+        BoundaryMode::Const(val) => mode
+    }
+}
+
+fn @read_pixel_bh_im(x: i32, y: i32, roi: RoI, read: fn(i32, i32) -> pixel_t, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> pixel_t {
+    let lower_x = roi.o_x;
+    let lower_y = roi.o_y;
+    let upper_x = roi.o_x + roi.width;
+    let upper_y = roi.o_y + roi.height;
+
+    let region = (Boundary::Unknown, Boundary::Unknown);
+
+    let (mode_x, mode_y) = match region {
+        (row, col) => {
+            let mode_x = match row {
+                Boundary::Lower   => bh_lower(roi.o_x + x, lower_x, upper_x),
+                Boundary::Center  => BoundaryMode::Index(roi.o_x + x),
+                Boundary::Upper   => bh_upper(roi.o_x + x, lower_x, upper_x),
+                Boundary::Unknown => map_boundary_mode(bh_lower(roi.o_x + x, lower_x, upper_x), @|idx| bh_upper(idx, lower_x, upper_x))
+            };
+            let mode_y = match col {
+                Boundary::Lower   => bh_lower(roi.o_y + y, lower_y, upper_y),
+                Boundary::Center  => BoundaryMode::Index(roi.o_y + y),
+                Boundary::Upper   => bh_upper(roi.o_y + y, lower_y, upper_y),
+                Boundary::Unknown => map_boundary_mode(bh_lower(roi.o_y + y, lower_y, upper_y), @|idx| bh_upper(idx, lower_y, upper_y))
+            };
+            (mode_x, mode_y)
+        }
+    };
+
+    match (mode_x, mode_y) {
+        (BoundaryMode::Index(x), BoundaryMode::Index(y)) => read(x, y),
+        (BoundaryMode::Const(c), _) => c,
+        (_, BoundaryMode::Const(c)) => c,
+        _ => undef[pixel_t]()
+    }
+}
+
+// ------------------------- Read from Window---------------------------------
+struct RoI1d {
+    o_x : i32,
+    width : i32,
+}
+struct col_selection {
+    read    : fn(int, int) -> pixel_t,
+    update  : fn(int) -> ()
+}
+struct coarsening_type {
+    process : fn(int, int) -> ()
+}
+struct Interval1d {
+    start : i32,
+    end   : i32,
+}
+struct LoopCircular {
+    interv : Interval1d,
+    roi : RoI1d,
+    vect_factor: i32
+}
+
+struct StencilMask{
+    lower_y : int, upper_y : int, size_y  : int,
+    lower_x : int, upper_x : int, size_x  : int
+}
+
+fn @get_crsn_coord(coord: int, vect_factor: int) -> int {
+    round_up(coord, vect_factor) / vect_factor
+}
+
+fn @get_crsn_interv(interv: Interval1d, vect_factor: int) -> Interval1d {
+    Interval1d { start: get_crsn_coord(interv.start, vect_factor),
+                   end: get_crsn_coord(interv.end, vect_factor) }
+}
+
+fn @get_crsn_roi(roi: RoI1d, vect_factor: int) -> RoI1d {
+    RoI1d{ o_x: get_crsn_coord(roi.o_x, vect_factor),
+         width: get_crsn_coord(roi.width, vect_factor) }
+}
+
+fn @get_rel_coord(coord: int, interv: Interval1d) -> int {
+             if coord > interv.end-1 { (coord % interv.end) + interv.start }
+        else if coord < interv.start { (coord + interv.end - interv.start) % interv.end } // (coord - interv.start) % interv.end }
+        else { coord }
+}
+
+fn @get_boundary(boundary: i32) -> Boundary {
+    match boundary {
+        0 => Boundary::Lower,
+        1 => Boundary::Center,
+        2 => Boundary::Upper,
+        _ => undef[Boundary]()
+    }
+}
+
+fn @new_bounds(lower: i32, lower_bh_pixels: i32, upper_bh_pixels: i32, upper: i32) -> get_bounds_fun_type {
+    @|boundary| {
+        match boundary {
+            Boundary::Lower  => (lower, lower_bh_pixels),
+            Boundary::Center => (lower_bh_pixels, upper_bh_pixels),
+            Boundary::Upper  => (upper_bh_pixels, upper),
+            _                => undef[(int, int)]()
+        }
+    }
+}
+
+fn @read_pixel_bh(xw: int, read: fn(int) -> pixel_t, boundary: Boundary, lower_high: int, upper_low: int, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> pixel_t {
+        let mode_x = match boundary {
+            Boundary::Lower   => bh_lower(xw, lower_high, 0),
+            Boundary::Center  => BoundaryMode::Index(xw),
+            Boundary::Upper   => bh_upper(xw, 0, upper_low),
+            Boundary::Unknown => undef[(BoundaryMode)]()
+        };
+
+        match mode_x {
+            BoundaryMode::Index(idx) => read(idx),
+            BoundaryMode::Const(c)   => c,
+            _ => undef[pixel_t]()
+        }
+}
+
+fn @iterate1d_border(body: fn(Boundary) -> ()) -> () {
+    for row in unroll(0, 3) {
+        let boundary = get_boundary(row);
+        @@body(boundary);
+    }
+}
+fn @iterate1d_atborders(body: fn(Boundary) -> ()) -> () {
+    @@body(Boundary::Lower);
+    @@body(Boundary::Upper);
+}
+
+fn @bh_type0(imx: int, boundary: Boundary, loop_schedule: LoopCircular, win_bounds: get_bounds_fun_type, brdr_assigns: brdr_assigns_type) -> () {
+    // coarsening
+    let vect_factor = loop_schedule.vect_factor;
+    let interv  = get_crsn_interv(loop_schedule.interv, vect_factor);
+    let roi     = get_crsn_roi(loop_schedule.roi, vect_factor);
+    // roi @ image
+    let lower_arr = get_rel_coord(roi.o_x, interv);
+    let upper_arr = get_rel_coord(roi.o_x + roi.width, interv);
+    // bounds @ win
+    let (lower_w, upper_w) = win_bounds(boundary);
+    let radius = upper_w - lower_w;
+
+    fn @for_the_bound(boundary: Boundary, lower_high: int, upper_low: int) -> () {
+        for xw in unroll(lower_w, upper_w) {
+            @@brdr_assigns(xw, boundary, lower_high, upper_low);
+        };
+    };
+
+    @@for_the_bound(Boundary::Center, 0, 0);
+
+    match boundary {
+        Boundary::Lower => {
+            for x in unroll_step(0, radius, vect_factor) {
+                let lower_high = upper_w - x;
+                if imx == lower_arr + x / vect_factor {
+                    @@for_the_bound(boundary, lower_high, 0);
+                }
+            }
+        },
+        Boundary::Upper => {
+            for x in unroll_step(0, radius, vect_factor) {
+                let upper_low = lower_w + x;
+                if imx == get_rel_coord(upper_arr - 1 - x / vect_factor, interv) {
+                    @@for_the_bound(boundary, 0, upper_low);
+                }
+            }
+        },
+        _ => {}
+    };
+}
+
+
+// ------------------------- helper: Registers in a range --------------------
+// register arrays
+struct regs1d {
+    read  : fn(int) -> pixel_t,
+    write : fn(int, pixel_t) -> (),
+    begin : int,
+    end   : int
+}
+
+struct regs2d {
+    read  : fn(int, int) -> pixel_t,
+    write : fn(int, int, pixel_t) -> (),
+    begin : (int, int),
+    end   : (int, int)
+}
+
+fn @new_regs1d(begin: int, end: int) -> regs1d {
+    if end == begin {
+        regs1d {
+            write : @|_, _| (),
+            read  : @|_| undef[pixel_t](),
+            begin : begin,
+            end   : end
+        }
+    } else if begin + 1 == end {
+        //pe_info("found", begin);
+        let mut value = 0 as pixel_t;
+        regs1d {
+            write : @|i, v| value = v,
+            read  : @|i| value,
+            begin : begin,
+            end   : end
+        }
+    } else {
+        //pe_info("begin", begin);
+        //pe_info("end", end);
+        let m = (end + begin) / 2;
+        let left  = new_regs1d(begin, m);
+        let right = new_regs1d(m, end);
+        regs1d {
+            write : @|i, v| if i >= m { right.write(i, v) } else { left.write(i, v) },
+            read  : @|i|    if i >= m { right.read(i) } else { left.read(i) },
+            begin : begin,
+            end   : end
+        }
+    }
+}
+
+fn @new_regs2d(begin: (int, int), end: (int, int)) -> regs2d {
+    let (begin_x, begin_y) = begin;
+    let (end_x, end_y)     = end;
+    if end_y == begin_y {
+        regs2d {
+            write : @|_, _, _| (),
+            read  : @|_, _| undef[pixel_t](),
+            begin : begin,
+            end   : end
+        }
+    } else if begin_y + 1 == end_y {
+        let row = new_regs1d(begin_x, end_x);
+        regs2d {
+            write : @|x, y, v| row.write(x, v),
+            read  : @|x, y|    row.read(x),
+            begin : begin,
+            end   : end
+        }
+    } else {
+        let m = (end_y + begin_y) / 2;
+        let left  = new_regs2d((begin_x, begin_y), (end_x, m));
+        let right = new_regs2d((begin_x, m),       (end_x, end_y));
+        regs2d {
+            write : @|x, y, v| if y >= m { right.write(x, y, v) } else { left.write(x, y, v) },
+            read  : @|x, y|    if y >= m { right.read(x, y) } else { left.read(x, y) },
+            begin : begin,
+            end   : end
+        }
+    }
+}
