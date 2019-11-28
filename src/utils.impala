@@ -3,12 +3,21 @@ fn init_zero(arr: &mut[pixel_t], width: i32, height: i32) -> () {
         arr(i) = 0 as pixel_t;
     }
 }
+
 fn init_rand(arr: &mut[pixel_t], width: i32, height: i32) -> () {
     for y in range(0, height) {
         for x in range(0, width) {
             arr(y*width + x) = (random_val_f32() * 1024f) as pixel_t;
         }
     }
+}
+
+fn img_init_zero(arr: Img) -> () {
+    init_zero(bitcast[&mut[pixel_t]](arr.buf.data), arr.stride, arr.height)
+}
+
+fn img_init_rand(arr: Img) -> () {
+    init_rand(bitcast[&mut[pixel_t]](arr.buf.data), arr.stride, arr.height)
 }
 
 fn @min(a: i32, b: i32) -> i32 { if a < b { a } else { b } }
