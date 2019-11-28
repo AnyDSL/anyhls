@@ -17,18 +17,16 @@ fn main() -> i32 {
     img_init_rand(arr);
 
     let filter = stencil(@|read, x, y| {(
-        1 * read(x-2, y-2) +  4 * read(x-1, y-2) +  6 * read(x, y-1) +  4 * read(x+1, y-2) + 1 * read(x-2, y-2) +
-        4 * read(x-2, y-1) + 16 * read(x-1, y-1) + 24 * read(x, y-1) + 16 * read(x+1, y-1) + 4 * read(x-2, y-1) +
-        6 * read(x-2, y  ) + 24 * read(x-1, y  ) + 36 * read(x, y  ) + 24 * read(x+1, y  ) + 6 * read(x-2, y  ) +
-        4 * read(x-2, y+1) + 16 * read(x-1, y+1) + 24 * read(x, y+1) + 16 * read(x+1, y+1) + 4 * read(x-2, y+1) +
-        1 * read(x-2, y+2) +  4 * read(x-1, y+2) +  6 * read(x, y+1) +  4 * read(x+1, y+2) + 1 * read(x-2, y+2) ) << 8}, extents(2, 2));
+        read(x-2, y-2) + read(x-1, y-2) + read(x, y-1) + read(x+1, y-2) + read(x-2, y-2) +
+        read(x-2, y-1) + read(x-1, y-1) + read(x, y-1) + read(x+1, y-1) + read(x-2, y-1) +
+        read(x-2, y  ) + read(x-1, y  ) + read(x, y  ) + read(x+1, y  ) + read(x-2, y  ) +
+        read(x-2, y+1) + read(x-1, y+1) + read(x, y+1) + read(x+1, y+1) + read(x-2, y+1) +
+        read(x-2, y+2) + read(x-1, y+2) + read(x, y+1) + read(x+1, y+2) + read(x-2, y+2) ) / 25}, extents(2, 2));
 
-    let lower = mirror_lower;
-    let upper = mirror_upper;
-    //let lower = wrap_const_fun(const_lower, 0 as pixel_t);
-    //let upper = wrap_const_fun(const_upper, 0 as pixel_t);
-
+    let lower = clamp_lower;
+    let upper = clamp_upper;
     let operator = make_local_op(vect_factor, filter, lower, upper);
+
     for benchmark_host(num_host_iter) {
         host2host(fpga, arr, out, operator);
     }

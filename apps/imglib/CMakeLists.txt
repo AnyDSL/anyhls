@@ -22,3 +22,8 @@ anydsl_runtime_wrap(GAUSSIAN CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FL
 add_executable(gaussian ${GAUSSIAN})
 target_link_libraries(gaussian ${ANYDSL_RUNTIME_LIBRARIES})
 add_test(NAME gaussian COMMAND test_gaussian)
+
+anydsl_runtime_wrap(BOX_FILTER CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${ANYHLS_FILES} box_filter.impala)
+add_executable(box_filter ${BOX_FILTER})
+target_link_libraries(box_filter ${ANYDSL_RUNTIME_LIBRARIES})
+add_test(NAME box_filter COMMAND test_box_filter)
