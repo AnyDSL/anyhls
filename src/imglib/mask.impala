@@ -1,0 +1,84 @@
+struct Mask {
+    read : fn(i32, i32) -> pixel_t,
+    sum  : pixel_t,
+    size_x : i32,
+    size_y : i32,
+}
+
+fn @sum_mask(size: int, data: fn(int) -> pixel_t) -> pixel_t {
+    fn @sum_helper(i: int, s: pixel_t) -> pixel_t {
+        if i == size { s } else { sum_helper(i + 1, s + data(i)) }
+    }
+    let sum = sum_helper(0, 0 as pixel_t);
+    if sum == 0 as pixel_t {
+        1 as pixel_t
+    } else {
+        sum
+    }
+}
+
+fn @get_mask3(data: [[pixel_t * 3] * 3]) -> Mask {
+    let data_sum = @|x| -> pixel_t { data(x % 3)(x / 3) };
+    Mask {
+        read : @|x, y| -> pixel_t { data(1 + y)(1 + x) },
+        sum  : sum_mask(9, data_sum),
+        size_x : 3, size_y : 3
+    }
+}
+
+fn @get_mask5(data: [[pixel_t * 5] * 5]) -> Mask {
+    let data_sum = @|x| -> pixel_t { data(x % 5)(x / 5) };
+    Mask {
+        read : @|x, y| -> pixel_t { data(2 + y)(2 + x) },
+        sum  : sum_mask(25, data_sum),
+        size_x : 5, size_y : 5
+    }
+}
+
+fn @get_mask9(data: [[pixel_t * 9] * 9]) -> Mask {
+    let size = 9;
+    let data_sum = @|x| -> pixel_t { data(x % size)(x / size) };
+    Mask {
+        read : @|x, y| -> pixel_t { data(4 + y)(4 + x) },
+        sum  : sum_mask(size * size , data_sum),
+        size_x : size, size_y : size
+    }
+}
+
+fn @get_mask13(data: [[pixel_t * 13] * 13]) -> Mask {
+    let size = 13;
+    let data_sum = @|x| -> pixel_t { data(x % size)(x / size) };
+    Mask {
+        read : @|x, y| -> pixel_t { data(6 + y)(6 + x) },
+        sum  : sum_mask(size * size , data_sum),
+        size_x : size, size_y : size
+    }
+}
+
+fn @get_stencil(mask: Mask) -> Stencil {
+    let half_range_y = mask.size_y / 2;
+    let half_range_x = mask.size_x / 2;
+
+    let op = |read: Read2d, x: i32, y: i32| {
+        let mut sum = 0 as pixel_t;
+
+        for j in unroll(-half_range_y, half_range_y+1) {
+            for i in unroll(-half_range_x, half_range_x+1) {
+                let stencil_val = mask.read(j, i);
+                if stencil_val != 0 as pixel_t {
+                    sum += read(x + i, y + j) * stencil_val;
+                } else {
+                    // additional logic for empty stencil value
+                }
+            }
+        }
+
+        if (mask.sum != 1 as pixel_t) {
+            sum /= mask.sum;
+        }
+
+        sum
+    };
+
+    stencil(op, extents(half_range_x, half_range_y))
+}
