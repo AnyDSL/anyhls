@@ -201,12 +201,17 @@ fn @check_with_ref(arr: Img, out: Img, f: fn(i32, i32) -> pixel_t, roi_disp: (i3
 
     // test
     let mut passed = 0;
+    let EPS = 0.02 as pixel_t;
     for y in range(offset_y, arr.height - 2 * offset_y) {
         for x in range(offset_x, arr.width - 2 * offset_x) {
             let res = img_read2d(out, x, y);
             let ref = f(x, y);
             img_write2d(ref_im, x, y, ref);
-            if ref != res { passed++; }
+
+            let mut err = ref - res;
+            if err < 0.0 as pixel_t { err = -err; }
+            if err > EPS  { passed++; }
+
             if passed == 1 {
                 print_string("Failed at (x, y) = (");
                 print_i32(x); print_string(", "); print_i32(y); print_string(")\n");
@@ -221,6 +226,7 @@ fn @check_with_ref(arr: Img, out: Img, f: fn(i32, i32) -> pixel_t, roi_disp: (i3
     } else {
         let (disp_x, disp_y) = roi_disp;
         print_string("Test FAILED!\n");
+        print_string("Number of Incorrect Results: "); print_i32(passed-1); print_string(")\n");
         print_string("input image: \n");
         display_image(arr, disp_x, disp_y);
         print_string("ref image: \n");

@@ -1,0 +1,98 @@
+type pixel_t = f32;
+type channel = channel_f32;
+static use_hls = false;
+fn @print_pixel(val: pixel_t) -> () { print_f32(val) };
+
+static mask5 = [[0.018316f, 0.082085f, 0.135335f, 0.082085f, 0.018316f],
+                [0.082085f, 0.367879f, 0.606531f, 0.367879f, 0.082085f],
+                [0.135335f, 0.606531f, 1.000000f, 0.606531f, 0.135335f],
+                [0.082085f, 0.367879f, 0.606531f, 0.367879f, 0.082085f],
+                [0.018316f, 0.082085f, 0.135335f, 0.082085f, 0.018316f]];
+
+static mask9 = [[0.018316f, 0.043937f, 0.082085f, 0.119433f, 0.135335f, 0.119433f, 0.082085f, 0.043937f, 0.018316f],
+                [0.043937f, 0.105399f, 0.196912f, 0.286505f, 0.324652f, 0.286505f, 0.196912f, 0.105399f, 0.043937f],
+                [0.082085f, 0.196912f, 0.367879f, 0.535261f, 0.606531f, 0.535261f, 0.367879f, 0.196912f, 0.082085f],
+                [0.119433f, 0.286505f, 0.535261f, 0.778801f, 0.882497f, 0.778801f, 0.535261f, 0.286505f, 0.119433f],
+                [0.135335f, 0.324652f, 0.606531f, 0.882497f, 1.000000f, 0.882497f, 0.606531f, 0.324652f, 0.135335f],
+                [0.119433f, 0.286505f, 0.535261f, 0.778801f, 0.882497f, 0.778801f, 0.535261f, 0.286505f, 0.119433f],
+                [0.082085f, 0.196912f, 0.367879f, 0.535261f, 0.606531f, 0.535261f, 0.367879f, 0.196912f, 0.082085f],
+                [0.043937f, 0.105399f, 0.196912f, 0.286505f, 0.324652f, 0.286505f, 0.196912f, 0.105399f, 0.043937f],
+                [0.018316f, 0.043937f, 0.082085f, 0.119433f, 0.135335f, 0.119433f, 0.082085f, 0.043937f, 0.018316f]];
+
+static mask13 = [[0.018316f, 0.033746f, 0.055638f, 0.082085f, 0.108368f, 0.128022f, 0.135335f, 0.128022f, 0.108368f, 0.082085f, 0.055638f, 0.033746f, 0.018316f],
+                 [0.033746f, 0.062177f, 0.102512f, 0.151240f, 0.199666f, 0.235877f, 0.249352f, 0.235877f, 0.199666f, 0.151240f, 0.102512f, 0.062177f, 0.033746f],
+                 [0.055638f, 0.102512f, 0.169013f, 0.249352f, 0.329193f, 0.388896f, 0.411112f, 0.388896f, 0.329193f, 0.249352f, 0.169013f, 0.102512f, 0.055638f],
+                 [0.082085f, 0.151240f, 0.249352f, 0.367879f, 0.485672f, 0.573753f, 0.606531f, 0.573753f, 0.485672f, 0.367879f, 0.249352f, 0.151240f, 0.082085f],
+                 [0.108368f, 0.199666f, 0.329193f, 0.485672f, 0.641180f, 0.757465f, 0.800737f, 0.757465f, 0.641180f, 0.485672f, 0.329193f, 0.199666f, 0.108368f],
+                 [0.128022f, 0.235877f, 0.388896f, 0.573753f, 0.757465f, 0.894839f, 0.945959f, 0.894839f, 0.757465f, 0.573753f, 0.388896f, 0.235877f, 0.128022f],
+                 [0.135335f, 0.249352f, 0.411112f, 0.606531f, 0.800737f, 0.945959f, 1.000000f, 0.945959f, 0.800737f, 0.606531f, 0.411112f, 0.249352f, 0.135335f],
+                 [0.128022f, 0.235877f, 0.388896f, 0.573753f, 0.757465f, 0.894839f, 0.945959f, 0.894839f, 0.757465f, 0.573753f, 0.388896f, 0.235877f, 0.128022f],
+                 [0.108368f, 0.199666f, 0.329193f, 0.485672f, 0.641180f, 0.757465f, 0.800737f, 0.757465f, 0.641180f, 0.485672f, 0.329193f, 0.199666f, 0.108368f],
+                 [0.082085f, 0.151240f, 0.249352f, 0.367879f, 0.485672f, 0.573753f, 0.606531f, 0.573753f, 0.485672f, 0.367879f, 0.249352f, 0.151240f, 0.082085f],
+                 [0.055638f, 0.102512f, 0.169013f, 0.249352f, 0.329193f, 0.388896f, 0.411112f, 0.388896f, 0.329193f, 0.249352f, 0.169013f, 0.102512f, 0.055638f],
+                 [0.033746f, 0.062177f, 0.102512f, 0.151240f, 0.199666f, 0.235877f, 0.249352f, 0.235877f, 0.199666f, 0.151240f, 0.102512f, 0.062177f, 0.033746f],
+                 [0.018316f, 0.033746f, 0.055638f, 0.082085f, 0.108368f, 0.128022f, 0.135335f, 0.128022f, 0.108368f, 0.082085f, 0.055638f, 0.033746f, 0.018316f]];
+
+fn @bilateral_filter(math: Intrinsics, mask: Mask, sigma_d: i32, c_d: f32, c_r: f32) -> Stencil {
+    stencil(@|read, x, y| {
+        let mut k = 0.0f;
+        let mut p = 0.0f;
+
+        for yf in unroll(-2*sigma_d, 2*sigma_d+1) {
+            for xf in unroll(-2*sigma_d, 2*sigma_d+1) {
+                let diff = read(x + xf, y + yf) - read(x, y);
+
+                let c = mask.read(xf, yf);
+                let s = math.expf(-c_r * diff*diff);
+
+                k += c * s;
+                p += c * s * read(x + xf, y + yf);
+            }
+        }
+
+        p / k
+        }, extents(mask.size_x / 2,  mask.size_y / 2))
+}
+
+fn main() -> i32 {
+    let width   = 1024;
+    let height  = 1024;
+
+    let fpga = get_fpga_backend(use_hls);
+    let math = get_fpga_intrinsics(use_hls);
+
+    let vect_factor = 1;
+    let arr = create_host_img(width, height, vect_factor);
+    let out = create_host_img(width, height, vect_factor);
+    img_init_zero(out);
+    img_init_rand(arr);
+
+    //let mask = get_mask13(mask13);
+    //let mask = get_mask9(mask9);
+    let mask = get_mask5(mask5);
+    let sigma_r = 5.0f;
+    let sigma_d = mask.size_x / 4;
+    let c_r = 1.0f / (2.0f * sigma_r*sigma_r);
+    let c_d = 1.0f / (2.0f * (sigma_d*sigma_d) as f32);
+    let filter = bilateral_filter(math, mask, sigma_d, c_d, c_r);
+
+    let lower = clamp_lower;
+    let upper = clamp_upper;
+    let enable_offset = 0;
+    let operator = make_local_op(vect_factor, filter, lower, upper);
+
+    for benchmark_host(num_host_iter) {
+        host2host(fpga, arr, out, operator);
+    }
+    print_total_timing();
+
+    let roi_disp = (0, 0);
+    let offset = (0, 0);
+    let filter_cpu = bilateral_filter(get_cpu_intrinsics(), mask, sigma_d, c_d, c_r);
+    let passed = check_with_ref(arr, out, |x, y| {filter_cpu.op(get_img_read2d_bh(arr, lower, upper), x, y)}, roi_disp, offset);
+
+    release_img(arr);
+    release_img(out);
+
+    if passed >= 256 { 255 } else { passed }
+}

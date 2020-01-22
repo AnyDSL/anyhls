@@ -3,6 +3,15 @@ fn @get_fpga_backend(use_hls : bool) -> Accelerator {
           else { let device_id = 0; opencl_accelerator(device_id) }
 }
 
+fn @get_fpga_intrinsics(use_hls : bool) -> Intrinsics {
+    if use_hls { hls_intrinsics }
+          else { opencl_intrinsics }
+}
+
+fn @get_cpu_intrinsics() -> Intrinsics {
+    cpu_intrinsics
+}
+
 fn @host2host(fpga: Accelerator, arr: Img, out: Img, body: fn(Img, Img) -> ()) -> () {
     let arr_dev = alloc_img(fpga, arr);
     let out_dev = alloc_img(fpga, out);

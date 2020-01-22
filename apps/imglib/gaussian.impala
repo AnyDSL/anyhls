@@ -34,7 +34,7 @@ fn main() -> i32 {
     }
     print_total_timing();
 
-    let roi_disp = (0, 0); // (width - 10, height - 10)
+    let roi_disp = (0, 0);
     let offset = (0, 0);
     let passed = check_with_ref(arr, out, |x, y| {filter.op(get_img_read2d_bh(arr, lower, upper), x, y)}, roi_disp, offset);
 

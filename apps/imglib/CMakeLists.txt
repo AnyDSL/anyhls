@@ -33,3 +33,8 @@ anydsl_runtime_wrap(JACOBI CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAG
 add_executable(jacobi ${JACOBI})
 target_link_libraries(jacobi ${ANYDSL_RUNTIME_LIBRARIES})
 add_test(NAME jacobi COMMAND test_jacobi)
+
+anydsl_runtime_wrap(BILATERAL CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${ANYHLS_FILES} bilateral.impala)
+add_executable(bilateral ${BILATERAL})
+target_link_libraries(bilateral ${ANYDSL_RUNTIME_LIBRARIES})
+add_test(NAME bilateral COMMAND test_bilateral)
