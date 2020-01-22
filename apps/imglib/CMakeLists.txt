@@ -19,6 +19,11 @@ set(ANYHLS_FILES ${ANYHLS_CORE_FILES}
     ${PROJECT_SOURCE_DIR}/src/imglib/borderhandling.impala
     ${PROJECT_SOURCE_DIR}/src/imglib/operators.impala)
 
+anydsl_runtime_wrap(SQUARE CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${ANYHLS_FILES} square.impala)
+add_executable(square ${SQUARE})
+target_link_libraries(square ${ANYDSL_RUNTIME_LIBRARIES})
+add_test(NAME square COMMAND test_square)
+
 anydsl_runtime_wrap(GAUSSIAN CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${ANYHLS_FILES} gaussian.impala)
 add_executable(gaussian ${GAUSSIAN})
 target_link_libraries(gaussian ${ANYDSL_RUNTIME_LIBRARIES})

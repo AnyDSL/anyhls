@@ -1,0 +1,37 @@
+type pixel_t = i32;
+type channel = channel_i32;
+static use_hls = false;
+
+fn @print_pixel(val: pixel_t) -> () { print_i32(val) };
+
+fn main() -> i32 {
+    let width  = 1024;
+    let height = 1024;
+
+    let fpga = get_fpga_backend(use_hls);
+
+    let vect_factor = 1;
+    let arr = create_host_img(width, height, vect_factor);
+    let out = create_host_img(width, height, vect_factor);
+    img_init_zero(out);
+    img_init_rand(arr);
+
+    //-------Your pointwise operation------
+    let square = @|pixel: pixel_t| { pixel * pixel };
+    //-------------------------------------
+    let operator = make_point_op(vect_factor, square);
+
+    for benchmark_host(num_host_iter) {
+        host2host(fpga, arr, out, operator);
+    }
+    print_total_timing();
+
+    let roi_disp = (0, 0);
+    let offset = (0, 0);
+    let passed = check_with_ref(arr, out, |x, y| {square(img_read2d(arr, x, y))}, roi_disp, offset);
+
+    release_img(arr);
+    release_img(out);
+
+    if passed >= 256 { 255 } else { passed }
+}
