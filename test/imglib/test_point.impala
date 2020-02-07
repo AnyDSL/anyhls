@@ -18,13 +18,13 @@ fn main() -> i32 {
         img_write(out, i, 0 as pixel_t);
     }
 
-    let scale = @|read, x, y| { 2 * read(x, y) };
+    let scale = @|pix: pixel_t| { 2 * pix };
 
     let operator = make_point_op(vect_factor, scale);
     host2host(fpga, arr, out, operator);
 
     let passed = check(arr, out,
-        |x, y| {img_read2d(out, x, y) != scale(get_img_read2d(arr), x, y)});
+        |x, y| {img_read2d(out, x, y) != scale(img_read2d(arr, x, y))});
 
     release_img(arr);
     release_img(out);
