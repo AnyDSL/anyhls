@@ -60,10 +60,8 @@ fn @make_img_mem1d(img: Img, vect_factor: i32) -> Mem1D {
 // helper functions
 fn @make_img_mem_vec1(img: Img) -> Mem1D {
     let mut value = 0 as pixel_t;
-    let global_read_fn = get_img_read(img);
-    let global_write_fn = get_img_write(img);
-    fn @get(idx: i32) -> () { value = global_read_fn(idx); }
-    fn @set(idx: i32) -> () { global_write_fn(idx, value); }
+    fn @get(idx: i32) -> () { value = get_img_read(img)(idx); }
+    fn @set(idx: i32) -> () { get_img_write(img)(idx, value); }
     fn @read(idx: i32) -> pixel_t { value }
     fn @write(idx: i32, din: pixel_t) -> () { value = din; }
     img_to_mem1d(img, 1, get, set, read, write)
@@ -71,10 +69,8 @@ fn @make_img_mem_vec1(img: Img) -> Mem1D {
 
 fn @make_img_mem_vec2(img: Img) -> Mem1D {
     let mut value = [ 0 as pixel_t, .. 2 ];
-    let global_read_fn = get_img_read_vec2(img);
-    let global_write_fn = get_img_write_vec2(img);
-    fn @get(idx: i32) -> () { value = global_read_fn(idx); }
-    fn @set(idx: i32) -> () { global_write_fn(idx, value); }
+    fn @get(idx: i32) -> () { value = get_img_read_vec2(img)(idx); }
+    fn @set(idx: i32) -> () { get_img_write_vec2(img)(idx, value); }
     fn @read(idx: i32) -> pixel_t { value(idx) }
     fn @write(idx: i32, din: pixel_t) -> () { value(idx) = din; }
     img_to_mem1d(img, 2, get, set, read, write)
@@ -82,10 +78,8 @@ fn @make_img_mem_vec2(img: Img) -> Mem1D {
 
 fn @make_img_mem_vec4(img: Img) -> Mem1D {
     let mut value = [ 0 as pixel_t, .. 4 ];
-    let global_read_fn = get_img_read_vec4(img);
-    let global_write_fn = get_img_write_vec4(img);
-    fn @get(idx: i32) -> () { value = global_read_fn(idx); }
-    fn @set(idx: i32) -> () { global_write_fn(idx, value); }
+    fn @get(idx: i32) -> () { value = get_img_read_vec4(img)(idx); }
+    fn @set(idx: i32) -> () { get_img_write_vec4(img)(idx, value); }
     fn @read(idx: i32) -> pixel_t { value(idx) }
     fn @write(idx: i32, din: pixel_t) -> () { value(idx) = din; }
     img_to_mem1d(img, 4, get, set, read, write)
@@ -93,10 +87,8 @@ fn @make_img_mem_vec4(img: Img) -> Mem1D {
 
 fn @make_img_mem_vec8(img: Img) -> Mem1D {
     let mut value = [ 0 as pixel_t, .. 8 ];
-    let global_read_fn = get_img_read_vec8(img);
-    let global_write_fn = get_img_write_vec8(img);
-    fn @get(idx: i32) -> () { value = global_read_fn(idx); }
-    fn @set(idx: i32) -> () { global_write_fn(idx, value); }
+    fn @get(idx: i32) -> () { value = get_img_read_vec8(img)(idx); }
+    fn @set(idx: i32) -> () { get_img_write_vec8(img)(idx, value); }
     fn @read(idx: i32) -> pixel_t { value(idx) }
     fn @write(idx: i32, din: pixel_t) -> () { value(idx) = din; }
     img_to_mem1d(img, 8, get, set, read, write)
@@ -104,10 +96,8 @@ fn @make_img_mem_vec8(img: Img) -> Mem1D {
 
 fn @make_img_mem_vec16(img: Img) -> Mem1D {
     let mut value = [ 0 as pixel_t, .. 16 ];
-    let global_read_fn = get_img_read_vec16(img);
-    let global_write_fn = get_img_write_vec16(img);
-    fn @get(idx: i32) -> () { value = global_read_fn(idx); }
-    fn @set(idx: i32) -> () { global_write_fn(idx, value); }
+    fn @get(idx: i32) -> () { value = get_img_read_vec16(img)(idx); }
+    fn @set(idx: i32) -> () { get_img_write_vec16(img)(idx, value); }
     fn @read(idx: i32) -> pixel_t { value(idx) }
     fn @write(idx: i32, din: pixel_t) -> () { value(idx) = din; }
     img_to_mem1d(img, 16, get, set, read, write)
@@ -115,10 +105,8 @@ fn @make_img_mem_vec16(img: Img) -> Mem1D {
 
 fn @make_img_mem_vec32(img: Img) -> Mem1D {
     let mut value = [ 0 as pixel_t, .. 32 ];
-    let global_read_fn = get_img_read_vec32(img);
-    let global_write_fn = get_img_write_vec32(img);
-    fn @get(idx: i32) -> () { value = global_read_fn(idx); }
-    fn @set(idx: i32) -> () { global_write_fn(idx, value); }
+    fn @get(idx: i32) -> () { value = get_img_read_vec32(img)(idx); }
+    fn @set(idx: i32) -> () { get_img_write_vec32(img)(idx, value); }
     fn @read(idx: i32) -> pixel_t { value(idx) }
     fn @write(idx: i32, din: pixel_t) -> () { value(idx) = din; }
     img_to_mem1d(img, 32, get, set, read, write)
