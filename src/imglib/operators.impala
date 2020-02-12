@@ -8,10 +8,6 @@ struct OperatorSchedule {
     delay : i32
 }
 
-fn @make_read_2d(width: i32, read: Read) -> Read2d {
-    |x, y| { read(y * width + x) }
-}
-
 fn make_point_op(vect_factor: int, op: PointOp) -> Operator {
     @ |arr_im, out_im| {
         let arr = make_img_mem1d(arr_im, vect_factor);

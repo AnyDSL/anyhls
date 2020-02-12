@@ -1,5 +1,4 @@
 type pixel_t = i32;
-type channel = channel_i32;
 static use_hls = false;
 
 fn @print_pixel(val: pixel_t) -> () { print_i32(val) };

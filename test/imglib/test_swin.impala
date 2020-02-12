@@ -1,7 +1,6 @@
-type pixel_t = i32;
-type channel = channel_i32;
 static use_hls = false;
 
+type pixel_t = i32;
 fn @print_pixel(val: pixel_t) -> () { print_i32(val) };
 
 fn @pipeline_range_step(ii: i32, lower: i32, upper: i32, step: i32, body: fn(i32) -> ()) -> () {

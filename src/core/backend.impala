@@ -1,0 +1,21 @@
+fn @get_fpga_backend(use_hls : bool) -> Accelerator {
+    if use_hls { hls_accelerator() }
+          else { let device_id = 0; opencl_accelerator(device_id) }
+}
+
+fn @get_fpga_intrinsics(use_hls : bool) -> Intrinsics {
+    if use_hls { hls_intrinsics }
+          else { opencl_intrinsics }
+}
+
+fn @get_cpu_intrinsics() -> Intrinsics {
+    cpu_intrinsics
+}
+
+fn @generate(fpga: Accelerator, body: fn() -> ()) -> () {
+    let grid  = (1, 1, 1);
+    let block = (1, 1, 1);
+    for work_item in fpga.exec(grid, block) {
+        @@body();
+    }
+}

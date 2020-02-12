@@ -4,6 +4,8 @@ set(ANYDSL_RUNTIME_LIBRARIES ${AnyDSL_runtime_LIBRARIES})
 set(HLS_FLAGS ${SOC} ${SYNTHESIS} ${FPGA_PART})
 
 set(ANYHLS_CORE_FILES
+    ${PROJECT_SOURCE_DIR}/src/core/backend.impala
+    ${PROJECT_SOURCE_DIR}/src/core/datat_any.impala
     ${PROJECT_SOURCE_DIR}/src/core/regs1d.impala
     ${PROJECT_SOURCE_DIR}/src/core/regs2d.impala)
 

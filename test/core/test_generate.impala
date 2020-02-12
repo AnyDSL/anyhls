@@ -24,7 +24,7 @@ fn main() -> i32 {
 
     copy(arr, arr_fpga); //from cpu to fpga
 
-    with accel(fpga) {
+    with generate(fpga) {
         for idx in pipeline(1, 0, size) {
             write(out_fpga, idx, read(arr_fpga, idx));
         }

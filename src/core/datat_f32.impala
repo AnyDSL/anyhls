@@ -1,0 +1,23 @@
+// pixel_t must also be defined at CMake
+
+type pixel_t = f32;
+static use_stream = true
+
+fn @print_pixel(val: pixel_t) -> () { print_f32(val) };
+fn @is_same_pixel(a: f32, b: f32) -> bool { cpu_fabsf(a - b) < 0.01f }
+
+// channels for HLS
+type channel = channel_f32;
+fn @read_channel   (c: &mut channel) ->  pixel_t { read_channel_f32(c) }
+fn @read_channel2  (c: &mut channel) -> [pixel_t * 2] { read_channel2_f32(c) }
+fn @read_channel4  (c: &mut channel) -> [pixel_t * 4] { read_channel4_f32(c) }
+fn @read_channel8  (c: &mut channel) -> [pixel_t * 8] { read_channel8_f32(c) }
+fn @read_channel16 (c: &mut channel) -> [pixel_t * 16] { read_channel16_f32(c) }
+fn @read_channel32 (c: &mut channel) -> [pixel_t * 32] { read_channel32_f32(c) }
+fn @write_channel  (c: &mut channel, val:  pixel_t      ) -> () { write_channel_f32(c, val) }
+fn @write_channel2 (c: &mut channel, val: [pixel_t * 2 ]) -> () { write_channel2_f32(c, val) }
+fn @write_channel4 (c: &mut channel, val: [pixel_t * 4 ]) -> () { write_channel4_f32(c, val) }
+fn @write_channel8 (c: &mut channel, val: [pixel_t * 8 ]) -> () { write_channel8_f32(c, val) }
+fn @write_channel16(c: &mut channel, val: [pixel_t * 16]) -> () { write_channel16_f32(c, val) }
+fn @write_channel32(c: &mut channel, val: [pixel_t * 32]) -> () { write_channel32_f32(c, val) }
+fn @bitcast_channel(c: &mut channel) -> [pixel_t * 2] { bitcast_channel_f32(c) }

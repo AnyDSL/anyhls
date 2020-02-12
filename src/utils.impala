@@ -135,6 +135,7 @@ fn @(?num) sort_i64(num: i32, arr: &mut[i64]) -> () {
         arr(j) = x;
     }
 }
+
 fn @(?num) sort_f32(num: i32, arr: &mut[f32]) -> () {
     // insertion sort
     for i in range(1, num) {

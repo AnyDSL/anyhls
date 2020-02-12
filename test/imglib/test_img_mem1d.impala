@@ -1,6 +1,6 @@
 // Note: image width is multiplicative of vect_factor (=4)
-
 static use_hls = false;
+
 type pixel_t = i32;
 
 // img

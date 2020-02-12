@@ -1,0 +1,30 @@
+// commented lines must be defined form the app 
+// use of stream is not supported
+
+// type pixel_t = u8;
+static use_stream = false;
+type stream = pixel_t;
+
+
+// fn @print_pixel(pixel: pixel_t) -> () { print_i32(pixel as pixel_t) }
+fn @is_same_pixel(a: pixel_t, b: pixel_t) -> bool {
+    let mut err = a - b;
+    if err < 0.0 as pixel_t { err = -err; }
+    (err < 0.01 as pixel_t)
+}
+
+// streams for HLS
+fn @read_stream   (c: &mut stream) ->  pixel_t { undef[pixel_t]() }
+fn @read_stream2  (c: &mut stream) -> [pixel_t * 2] { undef[[pixel_t * 2]]() }
+fn @read_stream4  (c: &mut stream) -> [pixel_t * 4] { undef[[pixel_t * 4]]() }
+fn @read_stream8  (c: &mut stream) -> [pixel_t * 8] { undef[[pixel_t * 8]]() }
+fn @read_stream16 (c: &mut stream) -> [pixel_t * 16] { undef[[pixel_t * 16]]() }
+fn @read_stream32 (c: &mut stream) -> [pixel_t * 32] { undef[[pixel_t * 32]]() }
+
+fn @write_stream  (c: &mut stream, val: pixel_t) -> () { }
+fn @write_stream2 (c: &mut stream, val: [pixel_t * 2 ]) -> () { }
+fn @write_stream4 (c: &mut stream, val: [pixel_t * 4 ]) -> () { }
+fn @write_stream8 (c: &mut stream, val: [pixel_t * 8 ]) -> () { }
+fn @write_stream16(c: &mut stream, val: [pixel_t * 16]) -> () { }
+fn @write_stream32(c: &mut stream, val: [pixel_t * 32]) -> () { }
+fn @bitcast_stream(c: &mut stream) -> [pixel_t * 2] { undef[[pixel_t * 2]]() }
