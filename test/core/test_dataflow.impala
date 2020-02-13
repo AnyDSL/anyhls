@@ -1,0 +1,72 @@
+static use_hls = false;
+
+type Read = fn(i32) -> data_t;
+type Write = fn(i32, data_t) -> ();
+type ReadFifo  = fn() -> data_t;
+type WriteFifo = fn(data_t) -> ();
+
+fn @read_buf(buf: Buffer, i: i32) -> data_t { bitcast[&[1][data_t]](buf.data)(i) }
+fn @write_buf(buf: Buffer, i: i32, v: data_t) -> () { bitcast[&mut[1][data_t]](buf.data)(i) = v }
+
+fn @host2device(fpga: Accelerator, size: i32, arr: Buffer, fifo: &mut stream, body: fn(i32, Read, WriteFifo) -> ()) -> () {
+    let arr_fpga = fpga.alloc(size * sizeof[data_t]());
+    copy(arr, arr_fpga); // from cpu to fpga
+
+    let read = @|i: i32| { read_buf(arr_fpga, i)};
+    let write = @|val: data_t| { write_stream(fifo, val)};
+
+    with generate(fpga) { 
+        for idx in pipeline(1, 0, size) { 
+            body(idx, read, write) }};
+
+    release(arr_fpga);
+}
+
+fn @device2host(fpga: Accelerator, size: i32, fifo: &mut stream, out: Buffer, body: fn(i32, ReadFifo, Write) -> ()) -> () {
+    let out_fpga = fpga.alloc(size * sizeof[data_t]());
+
+    let read = @|| { read_stream(fifo) };
+    let write = @|i: i32, val: data_t| { write_buf(out_fpga, i, val)};
+
+    with generate(fpga) { 
+        for idx in pipeline(1, 0, size) { 
+            body(idx, read, write) }};
+
+    copy(out_fpga, out); // from fpga to cpu 
+    fpga.sync();
+}
+
+
+fn main() -> i32 {
+    let size = 2048;
+    let arr = alloc_cpu(size * sizeof[data_t]());
+    let out = alloc_cpu(size * sizeof[data_t]());
+    static mut fifo : stream;
+
+    for i in range(0, size) {
+        write_buf(arr, i, (random_val_f32() * 1024f) as data_t);
+        write_buf(out, i, 0 as data_t);
+    }
+
+    let fpga = get_fpga_backend(use_hls);
+    for idx, arr, fifo in host2device(fpga, size, arr, &mut fifo) {
+            fifo(2 * arr(idx)) }
+
+    for idx, fifo, out in device2host(fpga, size, &mut fifo, out) {
+            out(idx, fifo() / 2) }
+
+    let mut passed = 0;
+    for i in range(0, size) {
+        if read_buf(out, i) != read_buf(arr, i) { passed++; }
+    }
+
+    if passed == 0 {
+        print_string("data_test PASSED!\n");
+    } else {
+        print_string("data_test FAILED!\n");
+    }
+
+    release(arr);
+    release(out);
+    passed
+}

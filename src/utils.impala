@@ -237,3 +237,14 @@ fn @check_with_ref(arr: Img, out: Img, f: fn(i32, i32) -> pixel_t, roi_disp: (i3
     }
     passed
 }
+
+
+fn @range2d_cpu(width: i32, height: i32, body: fn(i32, i32) -> ()) -> () {
+//    for benchmark_cpu() {
+        for y in range(0, height) {
+            for x in range(0, width) {
+                @@body(x, y)
+            }
+        }
+//    }
+}

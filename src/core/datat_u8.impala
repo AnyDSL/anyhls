@@ -2,6 +2,7 @@
 
 type pixel_t = u8;
 static use_stream = true
+type data_t = pixel_t;
 
 fn @print_pixel(pixel: u8) -> () { print_i32(pixel as i32) }
 fn @is_same_pixel(a: u8, b: u8 ) -> bool { a == b }

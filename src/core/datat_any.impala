@@ -1,5 +1,4 @@
-// commented lines must be defined form the app 
-// use of stream is not supported
+// pixel_t must be defined from the app, use of stream is not supported
 
 // type pixel_t = u8;
 static use_stream = false;

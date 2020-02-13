@@ -5,8 +5,7 @@ fn @host2host(fpga: Accelerator, arr: Img, out: Img, body: fn(Img, Img) -> ()) -
 
     with generate(fpga) { body(arr_dev, out_dev) };
 
-    fpga.sync();
+    sync_img(fpga, out_dev);
     copy_img(out_dev, out);
-    release_img(arr_dev);
-    release_img(out_dev);
 }
+

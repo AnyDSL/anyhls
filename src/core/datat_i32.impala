@@ -1,23 +1,24 @@
 // pixel_t must also be defined at CMake
 
 type pixel_t = i32;
-static use_stream = true
+static use_stream = true;
+type data_t = pixel_t;
 
 fn @print_pixel(pixel: i32) -> () { print_i32(pixel) }
 fn @is_same_pixel(a: i32, b: i32) -> bool { a == b }
 
-// channels for HLS
-type channel = channel_i32;
-fn @read_channel   (c: &mut channel) ->  pixel_t { read_channel_i32(c) }
-fn @read_channel2  (c: &mut channel) -> [pixel_t * 2] { read_channel2_i32(c) }
-fn @read_channel4  (c: &mut channel) -> [pixel_t * 4] { read_channel4_i32(c) }
-fn @read_channel8  (c: &mut channel) -> [pixel_t * 8] { read_channel8_i32(c) }
-fn @read_channel16 (c: &mut channel) -> [pixel_t * 16] { read_channel16_i32(c) }
-fn @read_channel32 (c: &mut channel) -> [pixel_t * 32] { read_channel32_i32(c) }
-fn @write_channel  (c: &mut channel, val:  pixel_t      ) -> () { write_channel_i32(c, val) }
-fn @write_channel2 (c: &mut channel, val: [pixel_t * 2 ]) -> () { write_channel2_i32(c, val) }
-fn @write_channel4 (c: &mut channel, val: [pixel_t * 4 ]) -> () { write_channel4_i32(c, val) }
-fn @write_channel8 (c: &mut channel, val: [pixel_t * 8 ]) -> () { write_channel8_i32(c, val) }
-fn @write_channel16(c: &mut channel, val: [pixel_t * 16]) -> () { write_channel16_i32(c, val) }
-fn @write_channel32(c: &mut channel, val: [pixel_t * 32]) -> () { write_channel32_i32(c, val) }
-fn @bitcast_channel(c: &mut channel) -> [pixel_t * 2] { bitcast_channel_i32(c) }
+// streams for HLS
+type stream = channel_i32;
+fn @read_stream   (c: &mut stream) ->  pixel_t        { read_channel_i32(c) }
+fn @read_stream2  (c: &mut stream) -> [pixel_t * 2]   { read_channel2_i32(c) }
+fn @read_stream4  (c: &mut stream) -> [pixel_t * 4]   { read_channel4_i32(c) }
+fn @read_stream8  (c: &mut stream) -> [pixel_t * 8]   { read_channel8_i32(c) }
+fn @read_stream16 (c: &mut stream) -> [pixel_t * 16]  { read_channel16_i32(c) }
+fn @read_stream32 (c: &mut stream) -> [pixel_t * 32]  { read_channel32_i32(c) }
+fn @write_stream  (c: &mut stream, val:  pixel_t      ) -> () { write_channel_i32(c, val) }
+fn @write_stream2 (c: &mut stream, val: [pixel_t * 2 ]) -> () { write_channel2_i32(c, val) }
+fn @write_stream4 (c: &mut stream, val: [pixel_t * 4 ]) -> () { write_channel4_i32(c, val) }
+fn @write_stream8 (c: &mut stream, val: [pixel_t * 8 ]) -> () { write_channel8_i32(c, val) }
+fn @write_stream16(c: &mut stream, val: [pixel_t * 16]) -> () { write_channel16_i32(c, val) }
+fn @write_stream32(c: &mut stream, val: [pixel_t * 32]) -> () { write_channel32_i32(c, val) }
+fn @bitcast_stream(c: &mut stream) -> [pixel_t * 2] { bitcast_channel_i32(c) }

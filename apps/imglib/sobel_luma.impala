@@ -1,0 +1,66 @@
+static use_hls = false;
+
+fn init_data(arr: Img) -> () {
+    let buf = bitcast[&mut[pixel_t]](arr.buf.data);
+
+    for y in range(0, arr.height) {
+        for x in range(0, arr.width) {
+            let val = if ((((x % 16) >= 8) & (( y % 16) < 8)) | (((x % 16) < 8) & ((y % 16) >= 8))) == false { 255 as pixel_t }
+                      else { 0 as pixel_t };
+            buf(y * arr.stride + x) = val;
+        }
+    }
+}
+
+
+fn main() -> i32 {
+    let width  = 1024;
+    let height = 1024;
+    static mut luma_c : stream;
+
+    let fpga = get_fpga_backend(use_hls);
+
+    let vect_factor = 1;
+    let arr = create_host_img(width, height, vect_factor);
+    let out = create_host_img(width, height, vect_factor);
+    let luma = create_virtual_img(width, height, &mut luma_c, vect_factor);
+    img_init_zero(out);
+    img_init_rand(arr);
+
+    let threshold = 80 as i32;
+
+    let lower = clamp_lower;
+    let upper = clamp_upper;
+
+    let rgb2luma = @|pix: pixel_t| {
+        let b = pix & 0xff;
+        let g = (pix >> 8)  & 0xff;
+        let r = (pix >> 16) & 0xff;
+        ((r * 66 + g * 129 + b * 25 + 128) >> 8) + 16
+    };
+
+    let edge = stencil(@|read, x, y| {
+        //let mask_x = get_mask3([[ -1, -2, -1], [  0,  0,  0], [  1,  2,  1]]);
+        //let mask_y = get_mask3([[ -1,  0,  1], [ -2,  0,  2], [ -1,  0,  1]]);
+        let pix_dx = (read(x-1, y+1) + 2 * read(x, y+1) + read(x+1, y+1) -
+                      read(x-1, y-1) - 2 * read(x, y-1) - read(x+1, y-1));
+        let pix_dy = (    read(x+1, y-1) -     read(x-1, y-1) +
+                      2 * read(x+1, y  ) - 2 * read(x-1, y  ) -
+                          read(x+1, y+1) -     read(x-1, y+1) );
+        let val = abs(pix_dx) + abs(pix_dy);
+        let mut res = 0;
+        if (val > threshold) { res = 255 as pixel_t }
+        res
+    }, extents(1,1));
+
+    for benchmark_host(num_host_iter) {
+        host2host(fpga, arr, luma, make_point_op(vect_factor, rgb2luma));
+        host2host(fpga, luma, out, make_local_op(vect_factor, edge, lower, upper));
+    }
+    print_total_timing();
+
+    let passed = check_with_ref(arr, out, |x, y| {edge.op(|x, y| {rgb2luma(img_read2d_bh(arr, x, y, lower, upper))}, x, y)}, (0, 0), (0, 0));
+    release_img(arr);
+    release_img(out);
+    0
+}

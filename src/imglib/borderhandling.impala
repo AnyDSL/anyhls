@@ -63,6 +63,10 @@ fn get_img_read2d_bh(img: Img, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> fn
     @|x, y| read_pixel_bh_im(x, y, RoI { o_x : 0, o_y : 0, width : img.width, height : img.height }, @|x, y| {img_read(img, y * img.stride + x)}, bh_lower, bh_upper)
 }
 
+fn img_read2d_bh(img: Img, x: i32, y: i32, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> pixel_t {
+    read_pixel_bh_im(x, y, RoI { o_x : 0, o_y : 0, width : img.width, height : img.height }, @|x, y| {img_read(img, y * img.stride + x)}, bh_lower, bh_upper)
+}
+
 // read from window : row selection
 fn @get_type0_row_sel(loop_schedule: LoopCircular, get_bounds_fun: get_bounds_fun_type) -> row_sel_fun_type {
     @|idx, brdr_assigns| {

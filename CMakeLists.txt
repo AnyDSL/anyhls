@@ -31,6 +31,16 @@ else()
     unset(SOC CACHE)
 endif()
 
+set(ANYHLS_CORE_FILES
+    ${PROJECT_SOURCE_DIR}/src/core/backend.impala
+    ${PROJECT_SOURCE_DIR}/src/core/regs1d.impala
+    ${PROJECT_SOURCE_DIR}/src/core/regs2d.impala)
+
+set(DATA_TYPE_ANY_FILE ${PROJECT_SOURCE_DIR}/src/core/datat_any.impala)
+set(DATA_TYPE_I32_FILE ${PROJECT_SOURCE_DIR}/src/core/datat_i32.impala)
+set(DATA_TYPE_F32_FILE ${PROJECT_SOURCE_DIR}/src/core/datat_f32.impala)
+set(DATA_TYPE_U8_FILE  ${PROJECT_SOURCE_DIR}/src/core/datat_u8.impala)
+
 #add_subdirectory(src)
 add_subdirectory(test)
 add_subdirectory(apps)

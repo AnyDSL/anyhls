@@ -3,12 +3,6 @@ set(IMPALA_FLAGS --log-level info)
 set(ANYDSL_RUNTIME_LIBRARIES ${AnyDSL_runtime_LIBRARIES})
 set(HLS_FLAGS ${SOC} ${SYNTHESIS} ${FPGA_PART})
 
-set(ANYHLS_CORE_FILES
-    ${PROJECT_SOURCE_DIR}/src/core/backend.impala
-    ${PROJECT_SOURCE_DIR}/src/core/datat_any.impala
-    ${PROJECT_SOURCE_DIR}/src/core/regs1d.impala
-    ${PROJECT_SOURCE_DIR}/src/core/regs2d.impala)
-
 set(ANYHLS_COMMON_FILES
     ${ANYHLS_CORE_FILES}
     ${PROJECT_SOURCE_DIR}/src/utils.impala
@@ -20,7 +14,7 @@ set(ANYHLS_COMMON_FILES
     ${PROJECT_SOURCE_DIR}/src/imglib/alg.impala
     ${PROJECT_SOURCE_DIR}/src/imglib/dataflow.impala)
 
-set(ANYHLS_FILES ${ANYHLS_COMMON_FILES}
+set(ANYHLS_FILES ${ANYHLS_COMMON_FILES} ${DATA_TYPE_ANY_FILE}
     ${PROJECT_SOURCE_DIR}/src/imglib/borderhandling.impala
     ${PROJECT_SOURCE_DIR}/src/imglib/operators.impala)
 
@@ -36,11 +30,11 @@ anydsl_runtime_wrap(TEST_POINT CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_
 add_executable(test_point ${TEST_POINT})
 target_link_libraries(test_point ${ANYDSL_RUNTIME_LIBRARIES})
 
-anydsl_runtime_wrap(TEST_LBUF CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${ANYHLS_COMMON_FILES} test_lbuf.impala)
+anydsl_runtime_wrap(TEST_LBUF CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${ANYHLS_COMMON_FILES} ${DATA_TYPE_ANY_FILE} test_lbuf.impala)
 add_executable(test_lbuf ${TEST_LBUF})
 target_link_libraries(test_lbuf ${ANYDSL_RUNTIME_LIBRARIES})
 
-anydsl_runtime_wrap(TEST_SWIN CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${ANYHLS_COMMON_FILES} test_swin.impala)
+anydsl_runtime_wrap(TEST_SWIN CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${ANYHLS_COMMON_FILES} ${DATA_TYPE_ANY_FILE} test_swin.impala)
 add_executable(test_swin ${TEST_SWIN})
 target_link_libraries(test_swin ${ANYDSL_RUNTIME_LIBRARIES})
 

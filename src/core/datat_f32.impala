@@ -2,6 +2,7 @@
 
 type pixel_t = f32;
 static use_stream = true
+type data_t = pixel_t;
 
 fn @print_pixel(val: pixel_t) -> () { print_f32(val) };
 fn @is_same_pixel(a: f32, b: f32) -> bool { cpu_fabsf(a - b) < 0.01f }
