@@ -32,15 +32,18 @@ else()
 endif()
 
 set(ANYHLS_CORE_FILES
-    ${PROJECT_SOURCE_DIR}/src/core/backend.impala
-    ${PROJECT_SOURCE_DIR}/src/core/regs1d.impala
-    ${PROJECT_SOURCE_DIR}/src/core/regs2d.impala)
+    ${PROJECT_SOURCE_DIR}/core/src/utils.impala
+    ${PROJECT_SOURCE_DIR}/core/src/backend.impala
+    ${PROJECT_SOURCE_DIR}/core/src/fsm.impala
+    ${PROJECT_SOURCE_DIR}/core/src/red.impala
+    ${PROJECT_SOURCE_DIR}/core/src/mux.impala
+    ${PROJECT_SOURCE_DIR}/core/src/regs1d.impala
+    ${PROJECT_SOURCE_DIR}/core/src/regs2d.impala)
 
-set(DATA_TYPE_ANY_FILE ${PROJECT_SOURCE_DIR}/src/core/datat_any.impala)
-set(DATA_TYPE_I32_FILE ${PROJECT_SOURCE_DIR}/src/core/datat_i32.impala)
-set(DATA_TYPE_F32_FILE ${PROJECT_SOURCE_DIR}/src/core/datat_f32.impala)
-set(DATA_TYPE_U8_FILE  ${PROJECT_SOURCE_DIR}/src/core/datat_u8.impala)
+set(ANYHLS_CORE_ANY_FILE ${ANYHLS_CORE_FILES} ${PROJECT_SOURCE_DIR}/core/src/datat_any.impala)
+set(ANYHLS_CORE_I32_FILE ${ANYHLS_CORE_FILES} ${PROJECT_SOURCE_DIR}/core/src/datat_i32.impala)
+set(ANYHLS_CORE_F32_FILE ${ANYHLS_CORE_FILES} ${PROJECT_SOURCE_DIR}/core/src/datat_f32.impala)
+set(ANYHLS_CORE_U8_FILE  ${ANYHLS_CORE_FILES} ${PROJECT_SOURCE_DIR}/core/src/datat_u8.impala)
 
-#add_subdirectory(src)
-add_subdirectory(test)
-add_subdirectory(apps)
+add_subdirectory(core)
+add_subdirectory(imglib)

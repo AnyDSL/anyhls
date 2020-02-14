@@ -1,3 +1,5 @@
+type State = i32;
+
 struct FSM {
     add: fn(State, fn() -> (), fn() -> State) -> (),
     run: fn(State) -> (),
