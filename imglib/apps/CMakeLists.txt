@@ -27,3 +27,8 @@ anydsl_runtime_wrap(SOBEL_LUMA CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_
 add_executable(sobel_luma ${SOBEL_LUMA})
 target_link_libraries(sobel_luma ${ANYDSL_RUNTIME_LIBRARIES})
 add_test(NAME sobel_luma COMMAND test_sobel_luma)
+
+anydsl_runtime_wrap(FILTER_CHAIN CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${IMGLIB_I32_FILES} filter_chain.impala)
+add_executable(filter_chain ${FILTER_CHAIN})
+target_link_libraries(filter_chain ${ANYDSL_RUNTIME_LIBRARIES})
+add_test(NAME filter_chain COMMAND test_filter_chain)

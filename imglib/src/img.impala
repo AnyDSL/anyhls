@@ -89,7 +89,7 @@ fn @get_img_read2d_vec32(img: Img) -> fn(i32, i32) -> [pixel_t * 32] {
 }
 
 fn @get_img_write2d(img: Img) -> fn(i32, i32, pixel_t) -> () {
-    |x, y, v| get_img_write(img)(y * img.stride / 2 + x, v)
+    |x, y, v| get_img_write(img)(y * img.stride + x, v)
 }
 
 fn @get_img_write2d_vec2(img: Img) -> fn(i32, i32, [pixel_t * 2]) -> () {

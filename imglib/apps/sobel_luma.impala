@@ -3,12 +3,10 @@ static use_hls = false;
 fn init_data(arr: Img) -> () {
     let buf = bitcast[&mut[pixel_t]](arr.buf.data);
 
-    for y in range(0, arr.height) {
-        for x in range(0, arr.width) {
-            let val = if ((((x % 16) >= 8) & (( y % 16) < 8)) | (((x % 16) < 8) & ((y % 16) >= 8))) == false { 255 as pixel_t }
-                      else { 0 as pixel_t };
-            buf(y * arr.stride + x) = val;
-        }
+    for x, y in range2d_cpu(arr.width, arr.height) {
+        let val = if ((((x % 16) >= 8) & (( y % 16) < 8)) | (((x % 16) < 8) & ((y % 16) >= 8))) == false { 255 as pixel_t }
+                  else { 0 as pixel_t };
+        buf(y * arr.stride + x) = val;
     }
 }
 

@@ -1,0 +1,54 @@
+static use_hls = false;
+
+fn main() -> i32 {
+    // algorithm 
+    let filter = stencil(@|read, x, y| {(
+        1 * read(x-2, y-2) +  4 * read(x-1, y-2) +  6 * read(x, y-1) +  4 * read(x+1, y-2) + 1 * read(x-2, y-2) +
+        4 * read(x-2, y-1) + 16 * read(x-1, y-1) + 24 * read(x, y-1) + 16 * read(x+1, y-1) + 4 * read(x-2, y-1) +
+        6 * read(x-2, y  ) + 24 * read(x-1, y  ) + 36 * read(x, y  ) + 24 * read(x+1, y  ) + 6 * read(x-2, y  ) +
+        4 * read(x-2, y+1) + 16 * read(x-1, y+1) + 24 * read(x, y+1) + 16 * read(x+1, y+1) + 4 * read(x-2, y+1) +
+        1 * read(x-2, y+2) +  4 * read(x-1, y+2) +  6 * read(x, y+1) +  4 * read(x+1, y+2) + 1 * read(x-2, y+2) ) << 8}, extents(2, 2));
+
+    // schedule
+    let fpga = get_fpga_backend(use_hls);
+    let vect_factor = 1;
+    let lower = mirror_lower;
+    let upper = mirror_upper;
+    let width  = 1024;
+    let height = 1024;
+
+    static mut virt0_fifo: stream;
+    static mut virt1_fifo: stream;
+    let arr = create_host_img(width, height, vect_factor);
+    let out = create_host_img(width, height, vect_factor);
+    let virt0 = create_virtual_img(width, height, &mut virt0_fifo, vect_factor);
+    let virt1 = create_virtual_img(width, height, &mut virt1_fifo, vect_factor);
+    img_init_zero(out);
+    img_init_rand(arr);
+
+    let operator = make_local_op(vect_factor, filter, lower, upper);
+
+    for benchmark_host(num_host_iter) {
+        host2host(fpga, arr, virt0, operator);
+        host2host(fpga, virt0, virt1, operator);
+        host2host(fpga, virt1, out, operator);
+    }
+    print_total_timing();
+
+    // test correctness
+    let ref0 = create_host_img(width, height, 1);
+    let ref1 = create_host_img(width, height, 1);
+    for x, y in range2d_cpu(width, height) {
+        img_write2d(ref0, x, y, filter.op(get_img_read2d_bh(arr, lower, upper), x, y))}
+    for x, y in range2d_cpu(width, height) {
+        img_write2d(ref1, x, y, filter.op(get_img_read2d_bh(ref0, lower, upper), x, y))}
+
+    let roi_disp = (0, 0);
+    let offset = (0, 0);
+    let passed = check_with_ref(ref1, out, |x, y| {filter.op(get_img_read2d_bh(ref1, lower, upper), x, y)}, roi_disp, offset);
+    release_img(arr);
+    release_img(ref0);
+    //release_img(ref1);
+    release_img(out);
+    passed 
+}
