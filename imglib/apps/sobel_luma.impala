@@ -12,25 +12,9 @@ fn init_data(arr: Img) -> () {
     }
 }
 
-
 fn main() -> i32 {
-    let width  = 1024;
-    let height = 1024;
-    static mut luma_c : stream;
-
-    let fpga = get_fpga_backend(use_hls);
-
-    let vect_factor = 1;
-    let arr = create_host_img(width, height, vect_factor);
-    let out = create_host_img(width, height, vect_factor);
-    let luma = create_virtual_img(width, height, &mut luma_c, vect_factor);
-    img_init_zero(out);
-    img_init_rand(arr);
-
+    // algorithm
     let threshold = 80 as i32;
-
-    let lower = clamp_lower;
-    let upper = clamp_upper;
 
     let rgb2luma = @|pix: pixel_t| {
         let b = pix & 0xff;
@@ -53,14 +37,30 @@ fn main() -> i32 {
         res
     }, extents(1,1));
 
+    // schedule
+    let fpga = get_fpga_backend(use_hls);
+    let vect_factor = 1;
+    let lower = clamp_lower;
+    let upper = clamp_upper;
+    let width  = 1024;
+    let height = 1024;
+
+    static mut luma_c : stream;
+    let arr = create_host_img(width, height, vect_factor);
+    let out = create_host_img(width, height, vect_factor);
+    let luma = create_virtual_img(width, height, &mut luma_c, vect_factor);
+    img_init_zero(out);
+    init_data(arr);
+
     for benchmark_host(num_host_iter) {
         host2host(fpga, arr, luma, make_point_op(vect_factor, rgb2luma));
         host2host(fpga, luma, out, make_local_op(vect_factor, edge, lower, upper));
     }
     print_total_timing();
 
+    // test correctness
     let passed = check_with_ref(arr, out, |x, y| {edge.op(|x, y| {rgb2luma(img_read2d_bh(arr, x, y, lower, upper))}, x, y)}, (0, 0), (0, 0));
     release_img(arr);
     release_img(out);
-    0
+    passed
 }
