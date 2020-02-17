@@ -1,0 +1,104 @@
+static use_hls = false;
+
+fn main() -> i32 {
+    let fpga = get_fpga_backend(use_hls);
+    let vect_factor = 1;
+    let width  = 1024;
+    let height = 1024;
+
+    static mut in_c0 : stream;
+    static mut in_c1 : stream;
+    static mut dx_c  : stream;
+    static mut dy_c  : stream;
+    static mut dxx_c : stream;
+    static mut dxy_c : stream;
+    static mut dyy_c : stream;
+    static mut gxx_c : stream;
+    static mut gxy_c : stream;
+    static mut gyy_c : stream;
+    static mut dx_c0 : stream;
+    static mut dx_c1 : stream;
+    static mut dy_c0 : stream;
+    static mut dy_c1 : stream;
+    //let arr = new_img(width, height, stride, Buffer { data : bitcast[&[i8]](img_data), size : (width * height * sizeof[pixel_t]()) as i64, device : 0 });
+    let arr = create_host_img(width, height, vect_factor);
+    let out = create_host_img(width, height, vect_factor);
+    let dx  = create_virtual_img(width, height, &mut dx_c,  vect_factor);
+    let dy  = create_virtual_img(width, height, &mut dy_c,  vect_factor);
+    let dxx = create_virtual_img(width, height, &mut dxx_c, vect_factor);
+    let dxy = create_virtual_img(width, height, &mut dxy_c, vect_factor);
+    let dyy = create_virtual_img(width, height, &mut dyy_c, vect_factor);
+    let gxx = create_virtual_img(width, height, &mut gxx_c, vect_factor);
+    let gxy = create_virtual_img(width, height, &mut gxy_c, vect_factor);
+    let gyy = create_virtual_img(width, height, &mut gyy_c, vect_factor);
+    img_init_zero(out);
+    img_init_rand(arr);
+
+    let lower = clamp_lower;
+    let upper = clamp_upper;
+    
+    let threshold = 100000;
+    let k = 4;
+    let k_den = 100;
+    let markVal = 255 as pixel_t;
+
+    let sobel_mx = get_mask3([[ -1,  0,  1], [ -2,  0,  2], [ -1,  0,  1]]);
+
+    let sobel_my = get_mask3([[ -1, -2, -1], [  0,  0,  0], [  1,  2,  1]]);
+
+    let gauss_m = get_mask3([[ 1, 2, 1], [ 2, 4, 2], [ 1, 2, 1]]);
+
+    let sobel_x = make_local_op(vect_factor, get_stencil(sobel_mx), lower, upper);
+
+    let sobel_y = make_local_op(vect_factor, get_stencil(sobel_my), lower, upper);
+
+    let square = make_point_op(vect_factor, @|pix: pixel_t| { pix * pix });
+
+    let mult   = make_point_op2to1(vect_factor, @|din0: pixel_t, din1: pixel_t| { din0 * din1 });
+
+    let corner = make_point_op3to1(vect_factor,
+        @|xx: pixel_t, yy: pixel_t, xy: pixel_t| {
+            let det   = xx * yy - xy * xy;
+            let trace = xx + yy;
+            let rank = det - trace * trace * k / k_den;
+            if rank > threshold { markVal} else { 0 as pixel_t } });
+
+    //         -- ix -|-- ixx -- sxx -
+    //       /         \              \
+    // in --            > ixy -- sxy --> hc -- out
+    //       \         /              /
+    //         -- iy -|-- iyy -- syy -
+
+    for benchmark_host(num_host_iter) {
+        // edges
+        let (arr0, arr1) = split_stream(fpga, vect_factor, arr, &mut in_c0, &mut in_c1);
+        compute(fpga, arr0, dx, sobel_x);
+        compute(fpga, arr1, dy, sobel_y);
+        compute2to1(fpga, dx, dy, out, mult);
+
+        // mutiplicatives of the edge values
+        let (dx0, dx1) = split_stream(fpga, vect_factor, dx, &mut dx_c0, &mut dx_c1);
+        let (dy0, dy1) = split_stream(fpga, vect_factor, dy, &mut dy_c0, &mut dy_c1);
+        compute(fpga, dx0, dxx, square);
+        compute(fpga, dy0, dyy, square);
+        compute2to1(fpga, dx1, dy1, dxy, mult);
+
+        // smooth with gaussian
+        compute(fpga, dxx, gxx, make_local_op(vect_factor, get_stencil(gauss_m), lower, upper));
+        compute(fpga, dyy, gyy, make_local_op(vect_factor, get_stencil(gauss_m), lower, upper));
+        compute(fpga, dxy, gxy, make_local_op(vect_factor, get_stencil(gauss_m), lower, upper));
+
+        // compute corners 
+        compute3to1(fpga, gxx, gyy, gxy, out, corner);
+    }
+    print_total_timing();
+
+    // test correctness
+    print_string("input image: \n");
+    display_image(arr, 0, 0);
+    print_string("output image: \n");
+    display_image(out, 0, 0);
+    release_img(arr);
+    release_img(out);
+    0
+}

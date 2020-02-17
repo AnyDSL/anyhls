@@ -3,9 +3,64 @@ fn @host2host(fpga: Accelerator, arr: Img, out: Img, body: fn(Img, Img) -> ()) -
     let out_dev = alloc_img(fpga, out);
     copy_img(arr, arr_dev);
 
-    with generate(fpga) { body(arr_dev, out_dev) };
+    with generate(fpga) { @@body(arr_dev, out_dev) };
 
     sync_img(fpga, out_dev);
     copy_img(out_dev, out);
 }
 
+fn @compute(fpga: Accelerator, arr: Img, out: Img, body: fn(Img, Img) -> ()) -> () {
+    host2host(fpga, arr, out, body)
+}
+
+fn @compute2to1(fpga: Accelerator, arr0: Img, arr1: Img, out: Img, body: fn(Img, Img, Img) -> ()) -> () {
+    let arr0_dev = alloc_img(fpga, arr0);
+    let arr1_dev = alloc_img(fpga, arr1);
+    let out_dev = alloc_img(fpga, out);
+    copy_img(arr0, arr0_dev);
+    copy_img(arr1, arr1_dev);
+
+    with generate(fpga) { @@body(arr0_dev, arr1_dev, out_dev) };
+
+    sync_img(fpga, out_dev);
+    copy_img(out_dev, out);
+}
+
+fn @compute3to1(fpga: Accelerator, arr0: Img, arr1: Img, arr2: Img, out: Img, body: fn(Img, Img, Img, Img) -> ()) -> () {
+    let arr0_dev = alloc_img(fpga, arr0);
+    let arr1_dev = alloc_img(fpga, arr1);
+    let arr2_dev = alloc_img(fpga, arr2);
+    let out_dev = alloc_img(fpga, out);
+    copy_img(arr0, arr0_dev);
+    copy_img(arr1, arr1_dev);
+    copy_img(arr2, arr2_dev);
+
+    with generate(fpga) { @@body(arr0_dev, arr1_dev, arr2_dev, out_dev) };
+
+    sync_img(fpga, out_dev);
+    copy_img(out_dev, out);
+}
+
+fn @compute1to2(fpga: Accelerator, arr: Img, out0: Img, out1: Img, body: fn(Img, Img, Img) -> ()) -> () {
+    let arr_dev = alloc_img(fpga, arr);
+    let out0_dev = alloc_img(fpga, out0);
+    let out1_dev = alloc_img(fpga, out1);
+    copy_img(arr, arr_dev);
+
+    with generate(fpga) { @@body(arr_dev, out0_dev, out1_dev) };
+
+    sync_img(fpga, out0_dev);
+    sync_img(fpga, out1_dev);
+    copy_img(out0_dev, out0);
+    copy_img(out1_dev, out1);
+}
+
+
+fn @split_stream(fpga: Accelerator, vect_factor: i32, arr: Img, pipe0: &mut stream, pipe1: &mut stream) -> (Img, Img) {
+    let out0 = new_virtual_img(arr.width, arr.height, arr.stride, pipe0);
+    let out1 = new_virtual_img(arr.width, arr.height, arr.stride, pipe1);
+
+    compute1to2(fpga, arr, out0, out1, make_point_op1to2(vect_factor, |pix: pixel_t| { pix }));
+
+    (out0, out1)
+}

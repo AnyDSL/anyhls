@@ -1,5 +1,11 @@
-static coarsening_policy = FetchAndCalc; //FetchAndCalc_nobh;
+static coarsening_policy = FetchAndCalc_nobh;
 type Operator = fn(Img, Img) -> ();
+type Operator3 = fn(Img, Img, Img) -> ();
+type Operator4 = fn(Img, Img, Img, Img) -> ();
+
+type PointOp = fn(pixel_t) -> pixel_t;
+type PointOp2to1 = fn(pixel_t, pixel_t) -> pixel_t;
+type PointOp3to1 = fn(pixel_t, pixel_t, pixel_t) -> pixel_t;
 
 struct OperatorSchedule {
     read  : fn(i32, i32) -> pixel_t,
@@ -14,10 +20,62 @@ fn make_point_op(vect_factor: int, op: PointOp) -> Operator {
         let out = make_img_mem1d(out_im, vect_factor);
         for idx in pipeline(1, 0, arr.height * arr.stride) {
             arr.get(idx);
-            for i in unroll(0, arr.vect_factor) {
-              out.write(i, op(arr.read(i)));
+            for i in unroll(0, vect_factor) {
+              out.write(i, op(arr.read(i)))
             }
             out.set(idx);
+        }
+    }
+}
+
+fn make_point_op2to1(vect_factor: int, op: PointOp2to1) -> Operator3 {
+    @ |arr0_im, arr1_im, out_im| {
+        let arr0 = make_img_mem1d(arr0_im, vect_factor);
+        let arr1 = make_img_mem1d(arr1_im, vect_factor);
+        let out  = make_img_mem1d(out_im, vect_factor);
+        for idx in pipeline(1, 0, arr0.height * arr1.stride) {
+            arr0.get(idx);
+            arr1.get(idx);
+            for i in unroll(0, vect_factor) {
+                out.write(i, op(arr0.read(i), arr1.read(i)))
+            }
+            out.set(idx);
+        }
+    }
+}
+
+fn make_point_op3to1(vect_factor: int, op: PointOp3to1) -> Operator4 {
+    @ |arr0_im, arr1_im, arr2_im, out_im| {
+        let arr0 = make_img_mem1d(arr0_im, vect_factor);
+        let arr1 = make_img_mem1d(arr1_im, vect_factor);
+        let arr2 = make_img_mem1d(arr2_im, vect_factor);
+        let out  = make_img_mem1d(out_im, vect_factor);
+        for idx in pipeline(1, 0, arr0.height * arr0.stride) {
+            arr0.get(idx);
+            arr1.get(idx);
+            arr2.get(idx);
+            for i in unroll(0, vect_factor) {
+                out.write(i, op(arr0.read(i), arr1.read(i), arr2.read(i)))
+            }
+            out.set(idx);
+        }
+    }
+}
+
+fn make_point_op1to2(vect_factor: int, op: PointOp) -> Operator3 {
+    @ |arr_im, out0_im, out1_im| {
+        let arr = make_img_mem1d(arr_im, vect_factor);
+        let out0 = make_img_mem1d(out0_im, vect_factor);
+        let out1 = make_img_mem1d(out1_im, vect_factor);
+        for idx in pipeline(1, 0, arr.height * arr.stride) {
+            arr.get(idx);
+            for i in unroll(0, vect_factor) {
+                let res = op(arr.read(i));
+                out0.write(i, res);
+                out1.write(i, res);
+            }
+            out0.set(idx);
+            out1.set(idx);
         }
     }
 }
@@ -69,7 +127,7 @@ fn @FetchAndCalc_nobh(arr: Mem1D, out: Mem1D, extents: Extents, vect_factor: i32
         write: @|i:i32, j:i32, val:pixel_t| { out.write(i, val) },
         at: @|idx: i32, body: BinOp| {
             shift();
-            for i, j in par(vect_factor, 1) { body(i, j) };
+            for i, j in par(vect_factor, 1) { @@body(i, j) };
         }
     }
 }
@@ -123,7 +181,7 @@ fn @FetchAndCalc(arr: Mem1D, out: Mem1D, extents: Extents, vect_factor: i32, bh_
         write: @|i:i32, j:i32, val:pixel_t| { out.write(i, val) },
         at: @|idx: i32, body: BinOp| {
             shift();
-            for i, j in par(vect_factor, 1) { body(i, j) };
+            for i, j in par(vect_factor, 1) { @@body(i, j) };
         }
     }
 }

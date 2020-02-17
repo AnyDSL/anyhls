@@ -5,7 +5,6 @@ type Write  = fn(i32, pixel_t) -> ();
 type Write2d = fn(i32, i32, pixel_t) -> ();
 
 type StencilOp = fn(Read2d, i32, i32) -> pixel_t;
-type PointOp = fn(pixel_t) -> pixel_t;
 
 struct Extents {
   x : i32,

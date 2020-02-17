@@ -38,8 +38,8 @@ fn @sync_img(acc : Accelerator, img: Img) -> () {
     if img.virtual == false { acc.sync() }
 }
 
-fn @create_host_img(width: i32, height: i32, pFactor: i32) -> Img {
-    let stride = round_up(width, pFactor);
+fn @create_host_img(width: i32, height: i32, vect_factor: i32) -> Img {
+    let stride = round_up(width, vect_factor);
     let buf = alloc_cpu(stride * height * sizeof[pixel_t]());
     new_img(width, height, stride, buf)
 }
@@ -49,8 +49,8 @@ fn @new_virtual_img(width: i32, height: i32, stride: i32, fifo: &mut stream) -> 
     Img { buf: buf, fifo: fifo, virtual: true, width: width, height: height, stride: stride }
 }
 
-fn @create_virtual_img(width: i32, height: i32, fifo: &mut stream, pFactor: i32) -> Img {
-    let stride = round_up(width, pFactor);
+fn @create_virtual_img(width: i32, height: i32, fifo: &mut stream, vect_factor: i32) -> Img {
+    let stride = round_up(width, vect_factor);
     new_virtual_img(width, height, stride, fifo)
 }
 
