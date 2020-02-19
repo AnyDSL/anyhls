@@ -33,7 +33,4 @@ add_executable(filter_chain ${FILTER_CHAIN})
 target_link_libraries(filter_chain ${ANYDSL_RUNTIME_LIBRARIES})
 add_test(NAME filter_chain COMMAND test_filter_chain)
 
-anydsl_runtime_wrap(HARRIS_CORNER CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${IMGLIB_I32_FILES} harris_corner.impala)
-add_executable(harris_corner ${HARRIS_CORNER})
-target_link_libraries(harris_corner ${ANYDSL_RUNTIME_LIBRARIES})
-add_test(NAME harris_corner COMMAND test_harris_corner)
+add_subdirectory(harris_corner)

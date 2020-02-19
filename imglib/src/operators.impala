@@ -1,4 +1,4 @@
-static coarsening_policy = FetchAndCalc_nobh;
+static coarsening_policy = FetchAndCalc; //FetchAndCalc_nobh;
 type Operator = fn(Img, Img) -> ();
 type Operator3 = fn(Img, Img, Img) -> ();
 type Operator4 = fn(Img, Img, Img, Img) -> ();
@@ -14,8 +14,8 @@ struct OperatorSchedule {
     delay : i32
 }
 
-fn make_point_op(vect_factor: int, op: PointOp) -> Operator {
-    @ |arr_im, out_im| {
+fn @make_point_op(vect_factor: int, op: PointOp) -> Operator {
+    @|arr_im, out_im| {
         let arr = make_img_mem1d(arr_im, vect_factor);
         let out = make_img_mem1d(out_im, vect_factor);
         for idx in pipeline(1, 0, arr.height * arr.stride) {
@@ -28,8 +28,8 @@ fn make_point_op(vect_factor: int, op: PointOp) -> Operator {
     }
 }
 
-fn make_point_op2to1(vect_factor: int, op: PointOp2to1) -> Operator3 {
-    @ |arr0_im, arr1_im, out_im| {
+fn @make_point_op2to1(vect_factor: int, op: PointOp2to1) -> Operator3 {
+    @|arr0_im, arr1_im, out_im| {
         let arr0 = make_img_mem1d(arr0_im, vect_factor);
         let arr1 = make_img_mem1d(arr1_im, vect_factor);
         let out  = make_img_mem1d(out_im, vect_factor);
@@ -44,8 +44,8 @@ fn make_point_op2to1(vect_factor: int, op: PointOp2to1) -> Operator3 {
     }
 }
 
-fn make_point_op3to1(vect_factor: int, op: PointOp3to1) -> Operator4 {
-    @ |arr0_im, arr1_im, arr2_im, out_im| {
+fn @make_point_op3to1(vect_factor: int, op: PointOp3to1) -> Operator4 {
+    @|arr0_im, arr1_im, arr2_im, out_im| {
         let arr0 = make_img_mem1d(arr0_im, vect_factor);
         let arr1 = make_img_mem1d(arr1_im, vect_factor);
         let arr2 = make_img_mem1d(arr2_im, vect_factor);
@@ -62,8 +62,8 @@ fn make_point_op3to1(vect_factor: int, op: PointOp3to1) -> Operator4 {
     }
 }
 
-fn make_point_op1to2(vect_factor: int, op: PointOp) -> Operator3 {
-    @ |arr_im, out0_im, out1_im| {
+fn @make_point_op1to2(vect_factor: int, op: PointOp) -> Operator3 {
+    @|arr_im, out0_im, out1_im| {
         let arr = make_img_mem1d(arr_im, vect_factor);
         let out0 = make_img_mem1d(out0_im, vect_factor);
         let out1 = make_img_mem1d(out1_im, vect_factor);
@@ -80,8 +80,8 @@ fn make_point_op1to2(vect_factor: int, op: PointOp) -> Operator3 {
     }
 }
 
-fn make_local_op(vect_factor: int, stencil: Stencil, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> Operator {
-    @ |arr_im, out_im| {
+fn @make_local_op(vect_factor: int, stencil: Stencil, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> Operator {
+    @|arr_im, out_im| {
         let arr = make_img_mem1d(arr_im, vect_factor);
         let out = make_img_mem1d(out_im, vect_factor);
 
@@ -166,7 +166,7 @@ fn @FetchAndCalc(arr: Mem1D, out: Mem1D, extents: Extents, vect_factor: i32, bh_
 
     let mut col = 0;
     let mut row = 0;
-    let shift = || {
+    let shift = @|| {
           lbuf.shift($col, 0);    // read addr from lbuf1Ds (col < lbuf.lbuf_stride, row = 0)
           swin.shift(0, $row);    // read addr from lbuf2D
           col_sel.update($col);

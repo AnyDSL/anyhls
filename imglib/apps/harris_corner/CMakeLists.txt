@@ -1,0 +1,6 @@
+anydsl_runtime_wrap(HARRIS_CORNER CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${IMGLIB_I32_FILES} harris_corner.impala)
+add_executable(harris_corner "main.cpp" ${HARRIS_CORNER})
+target_link_libraries(harris_corner ${ANYDSL_RUNTIME_LIBRARIES})
+#set_target_properties(harris_corner PROPERTIES COMPILE_FLAGS -DANYHLS_DATA_TYPE=int8_t)
+set_target_properties(harris_corner PROPERTIES CXX_STANDARD 11 CXX_STANDARD_REQUIRED ON)
+add_test(NAME harris_corner COMMAND test_harris_corner)

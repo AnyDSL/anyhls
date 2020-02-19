@@ -60,11 +60,11 @@ fn @const_upper (idx: i32, lower: i32, upper: i32, cval: pixel_t) -> BoundaryMod
 // -----------------------------  API ----------------------------------------
 // read from image
 fn get_img_read2d_bh(img: Img, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> fn(i32, i32) -> pixel_t {
-    @|x, y| read_pixel_bh_im(x, y, RoI { o_x : 0, o_y : 0, width : img.width, height : img.height }, @|x, y| {img_read(img, y * img.stride + x)}, bh_lower, bh_upper)
+    @|x, y| read_pixel_bh_im(x, y, RoI { o_x : 0, o_y : 0, width : img.width, height : img.height }, get_img_read2d(img), bh_lower, bh_upper)
 }
 
 fn img_read2d_bh(img: Img, x: i32, y: i32, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> pixel_t {
-    read_pixel_bh_im(x, y, RoI { o_x : 0, o_y : 0, width : img.width, height : img.height }, @|x, y| {img_read(img, y * img.stride + x)}, bh_lower, bh_upper)
+    get_img_read2d_bh(img, bh_lower, bh_upper)(x, y)
 }
 
 // read from window : row selection
@@ -117,7 +117,7 @@ fn @new_type0_col_selection(read_new: Read2d, win_height: i32, loop_schedule: Lo
 
 // sliding window
 fn @make_sliding_window_bh(stride: i32, height: i32, vect_factor: i32, row_sel_fun: row_sel_fun_type, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> Swin2D {
-    |read_new| {
+    @|read_new| {
         let swin = make_regs2d(stride, height);
 
         fn @shift(col: i32, row: i32) -> () {
@@ -257,18 +257,18 @@ fn @new_bounds(lower: i32, lower_bh_pixels: i32, upper_bh_pixels: i32, upper: i3
 }
 
 fn @read_pixel_bh(xw: int, read: fn(int) -> pixel_t, boundary: Boundary, lower_high: int, upper_low: int, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> pixel_t {
-        let mode_x = match boundary {
-            Boundary::Lower   => bh_lower(xw, lower_high, 0),
-            Boundary::Center  => BoundaryMode::Index(xw),
-            Boundary::Upper   => bh_upper(xw, 0, upper_low),
-            Boundary::Unknown => undef[(BoundaryMode)]()
-        };
+    let mode_x = match boundary {
+        Boundary::Lower   => bh_lower(xw, lower_high, 0),
+        Boundary::Center  => BoundaryMode::Index(xw),
+        Boundary::Upper   => bh_upper(xw, 0, upper_low),
+        Boundary::Unknown => undef[(BoundaryMode)]()
+    };
 
-        match mode_x {
-            BoundaryMode::Index(idx) => read(idx),
-            BoundaryMode::Const(c)   => c,
-            _ => undef[pixel_t]()
-        }
+    match mode_x {
+        BoundaryMode::Index(idx) => read(idx),
+        BoundaryMode::Const(c)   => c,
+        _ => undef[pixel_t]()
+    }
 }
 
 fn @iterate1d_border(body: fn(Boundary) -> ()) -> () {
