@@ -1,0 +1,118 @@
+static use_hls = false;
+
+fn main() -> i32 {
+    // algorithm 
+    let gauss_m = stencil(@|read, x, y| {(
+        1 * read(x-1, y-1) + 2 * read(x, y-1) + 1 * read(x+1, y-1) +
+        2 * read(x-1, y  ) + 4 * read(x, y  ) + 2 * read(x+1, y  ) +
+        1 * read(x-1, y+1) + 2 * read(x, y+1) + 1 * read(x+1, y+1));
+
+    let sobel_mx = stencil(@|read, x, y| {read(x-1, y+1) + 2 * read(x, y+1) + read(x+1, y+1) -
+                                         read(x-1, y-1) - 2 * read(x, y-1) - read(x+1, y-1)}, extents(1, 1));
+
+    let sobel_my = stencil(@|read, x, y| {    read(x+1, y-1) -     read(x-1, y-1) +
+                                         2 * read(x+1, y  ) - 2 * read(x-1, y  ) -
+                                             read(x+1, y+1) -     read(x-1, y+1) }, extents(1, 1));
+
+    let square = @|pix: pixel_t| { pix * pix };
+
+    let mult   = @|din0: pixel_t, din1: pixel_t| { din0 * din1 };
+
+    let thresh = @|xx: pixel_t, yy: pixel_t, xy: pixel_t| {
+        let det   = xx * yy - xy * xy;
+        let trace = xx + yy;
+        let rank = det - trace * trace * k / k_den;
+        let mark = if rank > threshold { markHigh } else { markLow }
+        out.write(x, y, mark);
+    }
+
+
+    // schedule
+    let fpga = get_fpga_backend(use_hls);
+    let vect_factor = 1;
+    let width  = 1024;
+    let height = 1024;
+
+    let lower = clamp_lower;
+    let upper = clamp_upper;
+    let gauss   = make_local_op(vect_factor, gauss_m, lower, upper);
+    let sobel_x = make_local_op(vect_factor, sobel_mx, lower, upper);
+    let sobel_y = make_local_op(vect_factor, sobel_my, lower, upper);
+    let square = make_point_op(vect_factor, square);
+    let corner = make_point_op3to1(vect_factor, corner);
+
+
+    //         -- ix -|-- ixx -- sxx -
+    //       /         \              \
+    // in --            > ixy -- sxy --> hc -- out
+    //       \         /              /
+    //         -- iy -|-- iyy -- syy -
+    static mut in_c0  : pipe;
+    static mut in_c1  : pipe;
+    static mut dx_c  : pipe;
+    static mut dy_c  : pipe;
+    static mut dxx_c : pipe;
+    static mut dxy_c : pipe;
+    static mut dyy_c : pipe;
+    static mut gxx_c : pipe;
+    static mut gxy_c : pipe;
+    static mut gyy_c : pipe;
+    static mut dx_c0 : pipe;
+    static mut dx_c1 : pipe;
+    static mut dy_c0 : pipe;
+    static mut dy_c1 : pipe;
+    let arr = new_img(width, height, stride, Buffer { data : bitcast[&[i8]](img_data), size : (width * height * sizeof[pixel_t]()) as i64, device : 0 });
+    let harris = create_host_img(width, height);
+    let dx  = create_virtual_img(width, height, &mut dx_c );
+    let dy  = create_virtual_img(width, height, &mut dy_c );
+    let dxx = create_virtual_img(width, height, &mut dxx_c);
+    let dxy = create_virtual_img(width, height, &mut dxy_c);
+    let dyy = create_virtual_img(width, height, &mut dyy_c);
+    let gxx = create_virtual_img(width, height, &mut gxx_c);
+    let gxy = create_virtual_img(width, height, &mut gxy_c);
+    let gyy = create_virtual_img(width, height, &mut gyy_c);
+    let virt0 = create_virtual_img(width, height, &mut virt0_fifo, vect_factor);
+    let virt1 = create_virtual_img(width, height, &mut virt1_fifo, vect_factor);
+    img_init_zero(out);
+    img_init_rand(arr);
+
+
+    for benchmark_host(num_host_iter) {
+        // edges
+        let (in0, in1) = split_stream(fpga, arr, &mut in_c0, &mut in_c1);
+        host2host(fpga, dx, in0, sobel_x);
+        host2host(fpga, dy, in1, sobel_y);
+
+        // mutiplicatives of the edge values
+        let (dx0, dx1) = split_image(math, dx, &mut dx_c0, &mut dx_c1);
+        let (dy0, dy1) = split_image(math, dy, &mut dy_c0, &mut dy_c1);
+        host2host(fpga, dxx, dx, square);
+        host2host(fpga, dyy, dy, square);
+        host2host2(fpga, dxy, dx, dy, mult);
+
+        // smooth with gaussian
+        host2host(fpga, gxx, dxx, gauss);
+        host2host(fpga, gyy, dyy, gauss);
+        host2host(fpga, gxy, dxy, gauss);
+        
+        host2host3(fpga, out, dxx, dyy, dxy, corner);
+    }
+    print_total_timing();
+
+    // test correctness
+    let ref0 = create_host_img(width, height, 1);
+    let ref1 = create_host_img(width, height, 1);
+    for x, y in range2d_cpu(width, height) {
+        img_write2d(ref0, x, y, filter.op(get_img_read2d_bh(arr, lower, upper), x, y))}
+    for x, y in range2d_cpu(width, height) {
+        img_write2d(ref1, x, y, filter.op(get_img_read2d_bh(ref0, lower, upper), x, y))}
+
+    let roi_disp = (0, 0);
+    let offset = (0, 0);
+    let passed = check_with_ref(ref1, out, |x, y| {filter.op(get_img_read2d_bh(ref1, lower, upper), x, y)}, roi_disp, offset);
+    release_img(arr);
+    release_img(ref0);
+    //release_img(ref1);
+    release_img(out);
+    passed 
+}

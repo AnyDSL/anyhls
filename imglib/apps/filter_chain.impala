@@ -29,9 +29,9 @@ fn main() -> i32 {
     let operator = make_local_op(vect_factor, filter, lower, upper);
 
     for benchmark_host(num_host_iter) {
-        host2host(fpga, arr, virt0, operator);
-        host2host(fpga, virt0, virt1, operator);
-        host2host(fpga, virt1, out, operator);
+        compute(fpga, arr, virt0, operator);
+        compute(fpga, virt0, virt1, operator);
+        compute(fpga, virt1, out, operator);
     }
     print_total_timing();
 

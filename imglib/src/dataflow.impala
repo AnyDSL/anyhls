@@ -1,4 +1,4 @@
-fn @host2host(fpga: Accelerator, arr: Img, out: Img, body: fn(Img, Img) -> ()) -> () {
+fn @compute(fpga: Accelerator, arr: Img, out: Img, body: fn(Img, Img) -> ()) -> () {
     let arr_dev = alloc_img(fpga, arr);
     let out_dev = alloc_img(fpga, out);
     copy_img(arr, arr_dev);
@@ -9,14 +9,10 @@ fn @host2host(fpga: Accelerator, arr: Img, out: Img, body: fn(Img, Img) -> ()) -
     copy_img(out_dev, out);
 }
 
-fn @compute(fpga: Accelerator, arr: Img, out: Img, body: fn(Img, Img) -> ()) -> () {
-    host2host(fpga, arr, out, body)
-}
-
 fn @compute2to1(fpga: Accelerator, arr0: Img, arr1: Img, out: Img, body: fn(Img, Img, Img) -> ()) -> () {
     let arr0_dev = alloc_img(fpga, arr0);
     let arr1_dev = alloc_img(fpga, arr1);
-    let out_dev = alloc_img(fpga, out);
+    let out_dev  = alloc_img(fpga, out);
     copy_img(arr0, arr0_dev);
     copy_img(arr1, arr1_dev);
 
@@ -54,7 +50,6 @@ fn @compute1to2(fpga: Accelerator, arr: Img, out0: Img, out1: Img, body: fn(Img,
     copy_img(out0_dev, out0);
     copy_img(out1_dev, out1);
 }
-
 
 fn @split_stream(fpga: Accelerator, vect_factor: i32, arr: Img, pipe0: &mut stream, pipe1: &mut stream) -> (Img, Img) {
     let out0 = new_virtual_img(arr.width, arr.height, arr.stride, pipe0);

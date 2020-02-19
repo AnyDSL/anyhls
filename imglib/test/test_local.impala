@@ -123,7 +123,7 @@ fn main() -> i32 {
     //let operator = make_local_naive(vect_factor, filter);
     //let operator = make_local_simple(vect_factor, filter);
     let operator = make_local(vect_factor, filter);
-    host2host(fpga, arr, out, operator);
+    compute(fpga, arr, out, operator);
 
     let roi_disp = (0, 0); // (width - 10, height - 10)
     let offset = (1, 1);

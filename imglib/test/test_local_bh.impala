@@ -25,7 +25,7 @@ fn main() -> i32 {
     //let operator = make_local_naive(vect_factor, filter);
     //let operator = make_local_simple(vect_factor, filter);
     let operator = make_local_op(vect_factor, filter, mirror_lower, mirror_upper);
-    host2host(fpga, arr, out, operator);
+    compute(fpga, arr, out, operator);
 
     let roi_disp = (width - 10, 0); // (0, 0); // (width - 10, height - 10)
     let offset = (0, 0);

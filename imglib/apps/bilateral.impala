@@ -82,7 +82,7 @@ fn main() -> i32 {
     let operator = make_local_op(vect_factor, filter, lower, upper);
 
     for benchmark_host(num_host_iter) {
-        host2host(fpga, arr, out, operator);
+        compute(fpga, arr, out, operator);
     }
     print_total_timing();
 

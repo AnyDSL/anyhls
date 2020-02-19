@@ -101,7 +101,6 @@ fn @make_local_schedule(arr: Mem1D, out: Mem1D, extents: Extents, vect_factor: i
     local_schedule(arr, out, extents, vect_factor, bh_lower, bh_upper)
 }
 
-
 fn @FetchAndCalc_nobh(arr: Mem1D, out: Mem1D, extents: Extents, vect_factor: i32, bh_lower: BoundaryFn, bh_upper: BoundaryFn) -> OperatorSchedule {
     let lbuf_width = arr.stride;
     let win_height = extents.y * 2 + 1;
@@ -114,8 +113,8 @@ fn @FetchAndCalc_nobh(arr: Mem1D, out: Mem1D, extents: Extents, vect_factor: i32
     let swin = (make_sliding_window(swin_width, win_height, vect_factor))(lbuf.read);
 
     let mut col = 0;
-    let shift = || {
-          lbuf.shift(col, 0); // read addr from lbuf1Ds (col < lbuf.lbuf_width, row = 0)
+    let shift = @|| {
+          lbuf.shift($col, 0); // read addr from lbuf1Ds (col < lbuf.lbuf_width, row = 0)
           swin.shift(0, 0);   // read addr from lbuf2D
           col++;
           if col == lbuf_width { col = 0; }

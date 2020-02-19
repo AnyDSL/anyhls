@@ -27,8 +27,8 @@ fn @vec(factor_x: i32, f: UnrOp) -> () {
 //             Loop types
 // --------------------------------------
 // range
-fn pipeline_range(ii:i32) -> Loop {
-    @ |lower, upper, body| pipeline(ii, lower, upper, body)
+fn @pipeline_range(ii:i32) -> Loop {
+    @|lower, upper, body| pipeline(ii, lower, upper, body)
 }
 
 //fn @pipeline_range_step(ii: i32, lower: i32, upper: i32, step: i32, body: fn(i32) -> ()) -> () {
@@ -43,8 +43,8 @@ fn pipeline_range(ii:i32) -> Loop {
 // --------------------------------------
 //    Software (Functional) Pipelining
 // --------------------------------------
-fn make_loop_pipeline(loop: Loop, delay: i32, at_read: fn(i32) -> (), at_write: fn(i32) -> ()) -> Loop {
-    @ |lower, upper, body: fn(i32) -> ()| {
+fn @make_loop_pipeline(loop: Loop, delay: i32, at_read: fn(i32) -> (), at_write: fn(i32) -> ()) -> Loop {
+    @|lower, upper, body: fn(i32) -> ()| {
         let offs = lower + delay;
         for idx in loop(lower, upper + delay) {
             with if_check(delay != 0, idx < upper) { at_read(idx) }

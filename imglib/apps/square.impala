@@ -21,7 +21,7 @@ fn main() -> i32 {
     let operator = make_point_op(vect_factor, square);
 
     for benchmark_host(num_host_iter) {
-        host2host(fpga, arr, out, operator);
+        compute(fpga, arr, out, operator);
     }
     print_total_timing();
 

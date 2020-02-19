@@ -18,7 +18,7 @@ fn @read(img: Img, i: i32) -> pixel_t { bitcast[&[1][pixel_t]](img.buf.data)(i) 
 fn @write(img: Img, i: i32, val: pixel_t) -> () { bitcast[&mut[1][pixel_t]](img.buf.data)(i) = val }
 
 // accelerator
-fn @host2host(fpga: Accelerator, arr: Img, out: Img, body: fn(Img, Img) -> ()) -> () {
+fn @compute(fpga: Accelerator, arr: Img, out: Img, body: fn(Img, Img) -> ()) -> () {
     let size = arr.width * arr.height;
     let arr_dev = new_img(arr.width, arr.height, fpga.alloc(size * sizeof[pixel_t]()));
     let out_dev = new_img(out.width, out.height, fpga.alloc(size * sizeof[pixel_t]()));
@@ -53,7 +53,7 @@ fn main() -> i32 {
         write(out, i, 0 as pixel_t);
     }
 
-    for arr, out in host2host(fpga, arr, out) {
+    for arr, out in compute(fpga, arr, out) {
         for idx in pipeline(1, 0, size) {
             write(out, idx, read(arr, idx));
         }

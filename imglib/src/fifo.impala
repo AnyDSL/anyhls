@@ -33,7 +33,7 @@ fn @new_fifo2d(width: i32, height: i32, vect_factor: i32, shift: fn(i32, i32) ->
 
 // Holds (height - 1) image lines
 fn @make_linebuf1d(width: i32, vect_factor: i32) -> LineBuf1D {
-    |read_new| {
+    @|read_new| {
         match vect_factor {
              1 => make_line_buf1d_vec1 (read_new, width),
              2 => make_line_buf1d_vec2 (read_new, width),
@@ -46,8 +46,8 @@ fn @make_linebuf1d(width: i32, vect_factor: i32) -> LineBuf1D {
     }
 }
 
-fn @make_linebuf2d(width: i32, height: i32, vect_factor: i32) -> LineBuf2D {
-    |read_new| {
+fn @(?height) make_linebuf2d(width: i32, height: i32, vect_factor: i32) -> LineBuf2D {
+    @|read_new| {
       if height == 1 {
           Fifo2D {
               read   : @|x, y| if y == 0 { read_new(x) }
@@ -74,7 +74,7 @@ fn @make_linebuf2d(width: i32, height: i32, vect_factor: i32) -> LineBuf2D {
 }
 
 fn @make_sliding_window(width: i32, height: i32, vect_factor: i32) -> Swin2D {
-    |read_new| {
+    @|read_new| {
         let swin = make_regs2d(width, height);
 
         fn @shift(col: i32, row: i32) -> () {
@@ -97,7 +97,7 @@ fn @make_sliding_window(width: i32, height: i32, vect_factor: i32) -> Swin2D {
     }
 }
 
-fn make_img_fifo2d(img: Img, height: i32, vect_factor: i32) -> Fifo2D {
+fn @(?height) make_img_fifo2d(img: Img, height: i32, vect_factor: i32) -> Fifo2D {
     // utilizes a register array to read from image
     if height == 0 {
         Fifo2D {

@@ -59,7 +59,7 @@ fn @get_stencil(mask: Mask) -> Stencil {
     let half_range_y = mask.size_y / 2;
     let half_range_x = mask.size_x / 2;
 
-    let op = |read: Read2d, x: i32, y: i32| {
+    let op = @|read: Read2d, x: i32, y: i32| {
         let mut sum = 0 as pixel_t;
 
         for j in unroll(-half_range_y, half_range_y+1) {

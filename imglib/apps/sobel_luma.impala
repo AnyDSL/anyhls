@@ -51,8 +51,8 @@ fn main() -> i32 {
     init_data(arr);
 
     for benchmark_host(num_host_iter) {
-        host2host(fpga, arr, luma, make_point_op(vect_factor, rgb2luma));
-        host2host(fpga, luma, out, make_local_op(vect_factor, edge, lower, upper));
+        compute(fpga, arr, luma, make_point_op(vect_factor, rgb2luma));
+        compute(fpga, luma, out, make_local_op(vect_factor, edge, lower, upper));
     }
     print_total_timing();
 

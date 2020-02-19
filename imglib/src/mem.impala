@@ -41,7 +41,7 @@ fn @make_img_rand_mem2d(img: Img) -> Mem2D {
     let get = @|x: i32, y: i32| { x_get = x; y_get = y; };
     let set = @|x: i32, y: i32| { x_set = x; y_set = y; };
     let read = @|x: i32, y: i32| { img_read2d(img, x_get + x, y_get + y) };
-    let write = |x: i32, y: i32, v: pixel_t| { img_write2d(img, x_set + x, y_set + y, v) };
+    let write = @|x: i32, y: i32, v: pixel_t| { img_write2d(img, x_set + x, y_set + y, v) };
     img_to_mem2d(img, 1, get, set, read, write)
 }
 
@@ -60,8 +60,8 @@ fn @make_img_mem1d(img: Img, vect_factor: i32) -> Mem1D {
 // helper functions
 fn @make_img_mem_vec1(img: Img) -> Mem1D {
     let mut value = 0 as pixel_t;
-    fn @get(idx: i32) -> () { value = get_img_read(img)(idx); }
-    fn @set(idx: i32) -> () { get_img_write(img)(idx, value); }
+    fn @get(idx: i32) -> () { value = get_img_read(img)($idx); }
+    fn @set(idx: i32) -> () { get_img_write(img)($idx, value); }
     fn @read(idx: i32) -> pixel_t { value }
     fn @write(idx: i32, din: pixel_t) -> () { value = din; }
     img_to_mem1d(img, 1, get, set, read, write)

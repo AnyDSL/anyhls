@@ -65,92 +65,92 @@ fn @copy_img(src: Img, dst: Img) -> () {
 
 // vectorized read / write 2d
 fn @get_img_read2d(img: Img) -> fn(i32, i32) -> pixel_t {
-    |x, y| get_img_read(img)(y * img.stride + x)
+    @|x, y| get_img_read(img)(y * img.stride + x)
 }
 
 fn @get_img_read2d_vec2(img: Img) -> fn(i32, i32) -> [pixel_t * 2] {
-    |x, y| get_img_read_vec2(img)(y * img.stride / 2 + x)
+    @|x, y| get_img_read_vec2(img)(y * img.stride / 2 + x)
 }
 
 fn @get_img_read2d_vec4(img: Img) -> fn(i32, i32) -> [pixel_t * 4] {
-    |x, y| get_img_read_vec4(img)(y * img.stride / 4 + x)
+    @|x, y| get_img_read_vec4(img)(y * img.stride / 4 + x)
 }
 
 fn @get_img_read2d_vec8(img: Img) -> fn(i32, i32) -> [pixel_t * 8] {
-    |x, y| get_img_read_vec8(img)(y * img.stride / 8 + x)
+    @|x, y| get_img_read_vec8(img)(y * img.stride / 8 + x)
 }
 
 fn @get_img_read2d_vec16(img: Img) -> fn(i32, i32) -> [pixel_t * 16] {
-    |x, y| get_img_read_vec16(img)(y * img.stride / 16 + x)
+    @|x, y| get_img_read_vec16(img)(y * img.stride / 16 + x)
 }
 
 fn @get_img_read2d_vec32(img: Img) -> fn(i32, i32) -> [pixel_t * 32] {
-    |x, y| get_img_read_vec32(img)(y * img.stride / 32 + x)
+    @|x, y| get_img_read_vec32(img)(y * img.stride / 32 + x)
 }
 
 fn @get_img_write2d(img: Img) -> fn(i32, i32, pixel_t) -> () {
-    |x, y, v| get_img_write(img)(y * img.stride + x, v)
+    @|x, y, v| get_img_write(img)(y * img.stride + x, v)
 }
 
 fn @get_img_write2d_vec2(img: Img) -> fn(i32, i32, [pixel_t * 2]) -> () {
-    |x, y, v| get_img_write_vec2(img)(y * img.stride / 2 + x, v)
+    @|x, y, v| get_img_write_vec2(img)(y * img.stride / 2 + x, v)
 }
 
 fn @get_img_write2d_vec4(img: Img) -> fn(i32, i32, [pixel_t * 4]) -> () {
-    |x, y, v| get_img_write_vec4(img)(y * img.stride / 4 + x, v)
+    @|x, y, v| get_img_write_vec4(img)(y * img.stride / 4 + x, v)
 }
 
 fn @get_img_write2d_vec8(img: Img) -> fn(i32, i32, [pixel_t * 8]) -> () {
-    |x, y, v| get_img_write_vec8(img)(y * img.stride / 8 + x, v)
+    @|x, y, v| get_img_write_vec8(img)(y * img.stride / 8 + x, v)
 }
 
 fn @get_img_write2d_vec16(img: Img) -> fn(i32, i32, [pixel_t * 16]) -> () {
-    |x, y, v| get_img_write_vec16(img)(y * img.stride / 16 + x, v)
+    @|x, y, v| get_img_write_vec16(img)(y * img.stride / 16 + x, v)
 }
 
 fn @get_img_write2d_vec32(img: Img) -> fn(i32, i32, [pixel_t * 32]) -> () {
-    |x, y, v| get_img_write_vec32(img)(y * img.stride / 32 + x, v)
+    @|x, y, v| get_img_write_vec32(img)(y * img.stride / 32 + x, v)
 }
 
 
 // vectorized read
 fn @get_img_read(img: Img) -> fn(i32) -> pixel_t {
-    |idx| { if (use_stream && img.virtual) { read_stream(img.fifo) }
+    @|idx| { if (use_stream && img.virtual) { read_stream(img.fifo) }
             else { let ptr = if use_hls { bitcast[&[1][pixel_t]](img.buf.data) }
                              else { bitcast[&[1][pixel_t]](img.buf.data) };
                    ptr($idx) }}
 }
 
 fn @get_img_read_vec2(img: Img) -> fn(i32) -> [pixel_t * 2] {
-    |idx| { if (use_stream && img.virtual) { read_stream2(img.fifo) }
+    @|idx| { if (use_stream && img.virtual) { read_stream2(img.fifo) }
             else { let ptr = if use_hls { bitcast[&[1][[pixel_t * 2]]](bitcast[&[1][pixel_t]](bitcast[&[1][[pixel_t * 2]]](img.buf.data))) }
                              else { bitcast[&[1][[pixel_t *  2]]](bitcast[&[1][pixel_t]](img.buf.data)) };
                    ptr($idx) }}
 }
 
 fn @get_img_read_vec4(img: Img) -> fn(i32) -> [pixel_t * 4] {
-    |idx| { if (use_stream && img.virtual) { read_stream4(img.fifo) }
+    @|idx| { if (use_stream && img.virtual) { read_stream4(img.fifo) }
             else { let ptr = if use_hls { bitcast[&[1][[pixel_t * 4]]](bitcast[&[1][pixel_t]](bitcast[&[1][[pixel_t * 4]]](img.buf.data))) }
                              else { bitcast[&[1][[pixel_t *  4]]](bitcast[&[1][pixel_t]](img.buf.data)) };
                    ptr($idx) }}
 }
 
 fn @get_img_read_vec8(img: Img) -> fn(i32) -> [pixel_t * 8] {
-    |idx| { if (use_stream && img.virtual) { read_stream8(img.fifo) }
+    @|idx| { if (use_stream && img.virtual) { read_stream8(img.fifo) }
             else { let ptr = if use_hls { bitcast[&[1][[pixel_t * 8]]](bitcast[&[1][pixel_t]](bitcast[&[1][[pixel_t * 8]]](img.buf.data))) }
                              else { bitcast[&[1][[pixel_t *  8]]](bitcast[&[1][pixel_t]](img.buf.data)) };
                    ptr($idx) }}
 }
 
 fn @get_img_read_vec16(img: Img) -> fn(i32) -> [pixel_t * 16] {
-    |idx| { if (use_stream && img.virtual) { read_stream16(img.fifo) }
+    @|idx| { if (use_stream && img.virtual) { read_stream16(img.fifo) }
             else { let ptr = if use_hls { bitcast[&[1][[pixel_t * 16]]](bitcast[&[1][pixel_t]](bitcast[&[1][[pixel_t * 16]]](img.buf.data))) }
                                    else { bitcast[&[1][[pixel_t *  16]]](bitcast[&[1][pixel_t]](img.buf.data)) };
                    ptr($idx) }}
 }
 
 fn @get_img_read_vec32(img: Img) -> fn(i32) -> [pixel_t * 32] {
-    |idx| { if (use_stream && img.virtual) { read_stream32(img.fifo) }
+    @|idx| { if (use_stream && img.virtual) { read_stream32(img.fifo) }
             else { let ptr = if use_hls { bitcast[&[1][[pixel_t * 32]]](bitcast[&[1][pixel_t]](bitcast[&[1][[pixel_t * 32]]](img.buf.data))) }
                              else { bitcast[&[1][[pixel_t *  32]]](bitcast[&[1][pixel_t]](img.buf.data)) };
                    ptr($idx) }}
@@ -158,42 +158,42 @@ fn @get_img_read_vec32(img: Img) -> fn(i32) -> [pixel_t * 32] {
 
 // vectorized write
 fn @get_img_write(img: Img) -> fn(i32, pixel_t) -> () {
-    |idx, value| { if (use_stream && img.virtual) { write_stream(img.fifo, value) }
+    @|idx, value| { if (use_stream && img.virtual) { write_stream(img.fifo, value) }
                    else { let ptr = if use_hls { bitcast[&mut[1][pixel_t]](img.buf.data) }
                                     else { bitcast[&mut[1][pixel_t]](img.buf.data) };
                           ptr($idx) = value; }}
 }
 
 fn @get_img_write_vec2(img: Img) -> fn(i32, [pixel_t * 2]) -> () {
-    |idx, value| { if (use_stream && img.virtual) { write_stream2(img.fifo, value) }
+    @|idx, value| { if (use_stream && img.virtual) { write_stream2(img.fifo, value) }
                    else { let ptr = if use_hls { bitcast[&mut[1][[pixel_t * 2]]](bitcast[&mut[1][pixel_t]](bitcast[&mut[1][[pixel_t * 2]]](img.buf.data))) }
                                     else { bitcast[&mut[1][[pixel_t *  2]]](bitcast[&[1][pixel_t]](img.buf.data)) };
                           ptr($idx) = value; }}
 }
 
 fn @get_img_write_vec4(img: Img) -> fn(i32, [pixel_t * 4]) -> () {
-    |idx, value| { if (use_stream && img.virtual) { write_stream4(img.fifo, value) }
+    @|idx, value| { if (use_stream && img.virtual) { write_stream4(img.fifo, value) }
                    else { let ptr = if use_hls { bitcast[&mut[1][[pixel_t * 4]]](bitcast[&mut[1][pixel_t]](bitcast[&mut[1][[pixel_t * 4]]](img.buf.data))) }
                                     else { bitcast[&mut[1][[pixel_t *  4]]](bitcast[&[1][pixel_t]](img.buf.data)) };
                           ptr($idx) = value; }}
 }
 
 fn @get_img_write_vec8(img: Img) -> fn(i32, [pixel_t * 8]) -> () {
-    |idx, value| { if (use_stream && img.virtual) { write_stream8(img.fifo, value) }
+    @|idx, value| { if (use_stream && img.virtual) { write_stream8(img.fifo, value) }
                    else { let ptr = if use_hls { bitcast[&mut[1][[pixel_t * 8]]](bitcast[&mut[1][pixel_t]](bitcast[&mut[1][[pixel_t * 8]]](img.buf.data))) }
                                     else { bitcast[&mut[1][[pixel_t *  8]]](bitcast[&[1][pixel_t]](img.buf.data)) };
                           ptr($idx) = value; }}
 }
 
 fn @get_img_write_vec16(img: Img) -> fn(i32, [pixel_t * 16]) -> () {
-    |idx, value| { if (use_stream && img.virtual) { write_stream16(img.fifo, value) }
+    @|idx, value| { if (use_stream && img.virtual) { write_stream16(img.fifo, value) }
                    else { let ptr = if use_hls { bitcast[&mut[1][[pixel_t * 16]]](bitcast[&mut[1][pixel_t]](bitcast[&mut[1][[pixel_t * 16]]](img.buf.data))) }
                                     else { bitcast[&mut[1][[pixel_t *  16]]](bitcast[&[1][pixel_t]](img.buf.data)) };
                           ptr($idx) = value; }}
 }
 
 fn @get_img_write_vec32(img: Img) -> fn(i32, [pixel_t * 32]) -> () {
-    |idx, value| { if (use_stream && img.virtual) { write_stream32(img.fifo, value) }
+    @|idx, value| { if (use_stream && img.virtual) { write_stream32(img.fifo, value) }
                    else { let ptr = if use_hls { bitcast[&mut[1][[pixel_t * 32]]](bitcast[&mut[1][pixel_t]](bitcast[&mut[1][[pixel_t * 32]]](img.buf.data))) }
                                     else { bitcast[&mut[1][[pixel_t *  32]]](bitcast[&[1][pixel_t]](img.buf.data)) };
                           ptr($idx) = value; }}

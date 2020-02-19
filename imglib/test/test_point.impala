@@ -20,7 +20,7 @@ fn main() -> i32 {
     let scale = @|pix: pixel_t| { 2 * pix };
 
     let operator = make_point_op(vect_factor, scale);
-    host2host(fpga, arr, out, operator);
+    compute(fpga, arr, out, operator);
 
     let passed = check(arr, out,
         |x, y| {img_read2d(out, x, y) != scale(img_read2d(arr, x, y))});
