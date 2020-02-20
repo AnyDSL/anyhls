@@ -31,14 +31,10 @@ fn harris_corner(img_data: &[pixel_t], out_data: &mut[pixel_t]) -> () {
     let gyy = create_virtual_img(width, height, &mut gyy_c, vect_factor);
     let arr = new_img(width, height, round_up(width, vect_factor), Buffer { data : bitcast[&[i8]](img_data), size : (width * height * sizeof[pixel_t]()) as i64, device : 0 });
     let out = new_img(width, height, round_up(width, vect_factor), Buffer { data : bitcast[&mut[i8]](out_data), size : (width * height * sizeof[pixel_t]()) as i64, device : 0 });
-    //let arr = create_host_img(width, height, vect_factor);
-    //let out = create_host_img(width, height, vect_factor);
-    //img_init_zero(out);
-    //img_init_rand(arr);
 
     let lower = clamp_lower;
     let upper = clamp_upper;
-    
+
     let threshold = 100000;
     let k = 4;
     let k_den = 100;
@@ -93,13 +89,4 @@ fn harris_corner(img_data: &[pixel_t], out_data: &mut[pixel_t]) -> () {
         compute3to1(fpga, gxx, gyy, gxy, out, corner);
     }
     print_total_timing();
-
-    // test correctness
-    //print_string("input image: \n");
-    //display_image(arr, 0, 0);
-    //print_string("output image: \n");
-    //display_image(out, 0, 0);
-    //release_img(arr);
-    //release_img(out);
-    //0
 }

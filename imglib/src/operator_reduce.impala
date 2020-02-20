@@ -1,0 +1,87 @@
+fn @concat_regs1d(left: regs1d, roil: Interval1d, right: regs1d, roir: Interval1d) -> regs1d {
+    let o = roil.end - roil.start;
+    regs1d {
+        write : @|i, val| if i < o { left.write(i + roil.start, val) } else { right.write(i - o + roir.start, val) },
+        read  : @|i|      if i < o  { left.read(i + roil.start) } else  { right.read(i - o + roir.start) },
+        begin : 0,
+        end   : o + (roir.end - roir.start)
+    }
+}
+
+fn @reduce_balanced(prev: regs1d, block: int, f: fn(regs1d, int, int) -> pixel_t) -> pixel_t {
+    let size = (prev.end - prev.begin);
+
+    if (size < block + 1) {
+        @@f(prev, prev.begin, prev.end)
+    } else {
+        let offset = (size % block);
+        let size_next = size / block + offset;
+        let next = concat_regs1d(prev, Interval1d{start: 0, end: offset}, new_regs1d(offset, size_next), Interval1d{start: offset, end: size_next});
+
+        for i in unroll_step(offset, size, block) {
+            next.write(i / block + offset, @@f(prev, i, i + block));
+        }
+
+        reduce_balanced(next, block, f)
+    }
+}
+
+fn @make_reduce(vect_factor: i32, neutral: pixel_t, body: fn(pixel_t, pixel_t) -> pixel_t) -> Operator {
+    @|arr_im, out_im| {
+        let block = 2i;
+
+        // reduce two inputs with the body function
+        fn @reduce_block(data: regs1d, start: int, end : int) -> pixel_t {
+            if (end - start) > 1 {
+                let mut result = @@body(data.read(start), data.read(start + 1));
+                for i in unroll(start + 2, end) { result = @@body(result, data.read(i)); }
+                result
+            } else if (end - start) == 1 {
+                data.read(start)
+            } else {
+                neutral
+            }
+        };
+
+        let in_m = make_img_mem1d(arr_im, vect_factor);
+        let out_m = make_img_mem1d(out_im, vect_factor);
+
+        // border handling
+        let bh_size = in_m.stride * vect_factor - in_m.width;
+        let bh_neccessary = if(bh_size > 0) { true } else { false };
+
+        let mut col_ridx = 0;
+        let mut bh_apply = false;
+
+        fn @col_update(ridx: int) -> () {
+            if bh_neccessary == true {
+                col_ridx++;
+                if bh_apply == true { col_ridx = 0; bh_apply = false;}
+                if col_ridx == in_m.stride - 1 { bh_apply = true; }
+            }
+        }
+
+        fn @border_handling(prev: regs1d) -> () {
+            if bh_neccessary == true {
+                if $bh_apply == true { // I assume (stride -  width) <  vect_factor
+                    for i in unroll(vect_factor - bh_size, vect_factor) {
+                       prev.write(i, neutral);
+                    }
+                }
+             }
+        }
+
+        let mut redval = neutral;
+        for idx in pipeline(1, 0, in_m.height * in_m.stride) {
+             in_m.get($idx);
+             let prev = concat_regs1d(regs1d { write: in_m.write, read: in_m.read, begin: 0, end: vect_factor }, Interval1d{start: 0, end: vect_factor},
+                                      regs1d { write: |_, _|(), read: |_| { redval }, begin: 0, end: 1 }, Interval1d{start: 0, end: 1});
+             border_handling(prev);
+             redval = reduce_balanced(prev, block, reduce_block);
+             //redval = reduce_block(prev, prev.begin, prev.end); // naive
+
+             col_update(idx);
+        }
+        img_write(out_im, 0, redval);
+    }
+}

@@ -8,8 +8,8 @@ type stream = pixel_t;
 // fn @print_pixel(pixel: pixel_t) -> () { print_i32(pixel as pixel_t) }
 fn @is_same_pixel(a: pixel_t, b: pixel_t) -> bool {
     let mut err = a - b;
-    if err < 0.0 as pixel_t { err = -err; }
-    (err < 0.01 as pixel_t)
+    if err < 0 as pixel_t { err = -err; }
+    (err <= 0.01 as pixel_t)
 }
 
 // streams for HLS

@@ -13,6 +13,7 @@ set(IMGLIB_FILES
     ${PROJECT_SOURCE_DIR}/imglib/src/alg.impala
     ${PROJECT_SOURCE_DIR}/imglib/src/dataflow.impala
     ${PROJECT_SOURCE_DIR}/imglib/src/borderhandling.impala
+    ${PROJECT_SOURCE_DIR}/imglib/src/operator_reduce.impala
     ${PROJECT_SOURCE_DIR}/imglib/src/operators.impala)
 
 set(IMGLIB_ANY_FILES ${IMGLIB_FILES} ${ANYHLS_CORE_ANY_FILE})

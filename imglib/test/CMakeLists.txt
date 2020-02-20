@@ -30,6 +30,10 @@ anydsl_runtime_wrap(TEST_LOCAL_FSM CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMP
 add_executable(test_local_fsm ${TEST_LOCAL_FSM})
 target_link_libraries(test_local_fsm ${ANYDSL_RUNTIME_LIBRARIES})
 
+anydsl_runtime_wrap(TEST_REDUCE CLANG_FLAGS ${CLANG_FLAGS} IMPALA_FLAGS ${IMPALA_FLAGS} HLS_FLAGS ${HLS_FLAGS} FILES ${IMGLIB_ANY_FILES} test_reduce.impala)
+add_executable(test_reduce ${TEST_REDUCE})
+target_link_libraries(test_reduce ${ANYDSL_RUNTIME_LIBRARIES})
+
 add_test(NAME host2host COMMAND test_host2host)
 add_test(NAME img_mem1d COMMAND test_img_mem1d)
 add_test(NAME point     COMMAND test_point)
@@ -37,3 +41,4 @@ add_test(NAME lbuf      COMMAND test_lbuf)
 add_test(NAME swin      COMMAND test_swin)
 add_test(NAME local     COMMAND test_local)
 add_test(NAME local_fsm COMMAND test_local_fsm)
+add_test(NAME reduce    COMMAND test_reduce)

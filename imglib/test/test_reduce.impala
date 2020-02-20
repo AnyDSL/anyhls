@@ -1,0 +1,74 @@
+static use_hls = false;
+
+type pixel_t = i32;
+fn @print_pixel(val: pixel_t) -> () { print_i32(val) };
+
+
+fn main() -> i32 {
+    let fpga = get_fpga_backend(use_hls);
+    let width  = 1023;
+    let height = 1024;
+    let vect_factor = 4;
+
+    // reduction takes as input a netural elemant
+    let max_op = make_reduce(vect_factor, 0 as pixel_t,
+        |left: pixel_t, right: pixel_t| {
+            if (left > right) { left } else { right }});
+
+    let min_op = make_reduce(vect_factor, 2147483647 as pixel_t,
+        |left: pixel_t, right: pixel_t| {
+            if (left < right) { left } else { right }});
+
+    let sum_op = make_reduce(vect_factor, 0 as pixel_t,
+        |left: pixel_t, right: pixel_t| {
+            left + right});
+
+    let arr = create_host_img(width, height, vect_factor);
+    let out = create_host_img(1, 1, vect_factor);
+    let max = create_host_img(1, 1, vect_factor);
+    let min = create_host_img(1, 1, vect_factor);
+    let sum = create_host_img(1, 1, vect_factor);
+    img_init_rand(arr);
+
+    for benchmark_host(num_host_iter) {
+        compute(fpga, arr, max, max_op);
+        compute(fpga, arr, min, min_op);
+        compute(fpga, arr, sum, sum_op);
+
+        compute3to1(fpga, max, min, sum, out, make_point_op3to1(vect_factor,
+            @|max: pixel_t, min: pixel_t, sum: pixel_t| {
+                max + min + sum }));
+    }
+    print_total_timing();
+
+    fn reference() -> i32 {
+        let mut passed = 0;
+        let mut max_ref = 0 as pixel_t;
+        let mut min_ref = 2147483647  as pixel_t;
+        let mut sum_ref = 0 as pixel_t;
+
+        for x, y in range2d_cpu(arr.width, arr.height) {
+            let new = img_read2d(arr, x, y);
+            max_ref = if (new > max_ref) { new } else { max_ref };
+            min_ref = if (new < min_ref) { new } else { min_ref };
+            sum_ref += new;
+        }
+        let ref = min_ref + max_ref + sum_ref;
+
+        let res = img_read2d(out, 0, 0);
+        if is_same_pixel(res, ref) {
+            print_string("Test PASSED!\n");
+        } else {
+            print_string("Test FAILED!\n");
+            passed = 255;
+        }
+        print_string("REF vs FPGA : ");
+        print_i32(ref as i32); print_string(", "); print_i32(res as i32); print_string("\n");
+
+        passed
+    }
+
+    let result = reference();
+    release(arr.buf);
+    result
+}
