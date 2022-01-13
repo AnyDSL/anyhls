@@ -28,7 +28,7 @@ fn @new_img(width: i32, height: i32, stride: i32, buf: Buffer) -> Img {
 
 fn @alloc_img(acc : Accelerator, img: Img) -> Img {
     if img.virtual == false {
-        new_img(img.width, img.height, img.stride, acc.alloc(img.stride * img.height * sizeof[pixel_t]()))
+        new_img(img.width, img.height, img.stride, acc.alloc((img.stride * img.height) as i64 * sizeof[pixel_t]()))
     } else {
         img
     }
@@ -40,12 +40,12 @@ fn @sync_img(acc : Accelerator, img: Img) -> () {
 
 fn @create_host_img(width: i32, height: i32, vect_factor: i32) -> Img {
     let stride = round_up(width, vect_factor);
-    let buf = alloc_cpu(stride * height * sizeof[pixel_t]());
+    let buf = alloc_cpu((stride * height) as i64 * sizeof[pixel_t]());
     new_img(width, height, stride, buf)
 }
 
 fn @new_virtual_img(width: i32, height: i32, stride: i32, fifo: &mut stream) -> Img {
-    let buf = alloc_cpu(0);
+    let buf = alloc_cpu(0 as i64);
     Img { buf: buf, fifo: fifo, virtual: true, width: width, height: height, stride: stride }
 }
 
