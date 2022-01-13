@@ -1,7 +1,8 @@
 set(CLANG_FLAGS -march=native)
 set(IMPALA_FLAGS --log-level info)
 set(ANYDSL_RUNTIME_LIBRARIES ${AnyDSL_runtime_LIBRARIES})
-set(HLS_FLAGS ${SOC} ${SYNTHESIS} ${FPGA_PART})
+# HLS_FLAGS is a list holding the states of  SOC, SYNTHESIS, FPGA_PART, PROFILER, HW_EMULATION, GMEM_BANK_OPT
+set(HLS_FLAGS ${SOC} ${SYNTHESIS} ${FPGA_PART} 0 0 0)
 
 set(IMGLIB_FILES
     ${PROJECT_SOURCE_DIR}/imglib/src/utils.impala
