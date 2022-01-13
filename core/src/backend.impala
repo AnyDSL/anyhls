@@ -1,5 +1,5 @@
 fn @get_fpga_backend(use_hls : bool) -> Accelerator {
-    if use_hls { hls_accelerator() }
+    if use_hls { hls_accelerator(0) }
           else { let device_id = 0; opencl_accelerator(device_id) }
 }
 
