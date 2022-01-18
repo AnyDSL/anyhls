@@ -8,7 +8,7 @@ fn main() -> i32 {
 
     let use_hls = true;
 
-    let fpga = if use_hls { hls_accelerator() }
+    let fpga = if use_hls { let device_id = 0; hls_accelerator(device_id) }
                      else { let device_id = 0; opencl_accelerator(device_id) };
 
     let arr     = alloc_cpu(size * sizeof[T]());
