@@ -1,6 +1,7 @@
 set(CLANG_FLAGS -march=native)
 set(IMPALA_FLAGS --log-level info)
-set(HLS_FLAGS ${SOC} ${SYNTHESIS} ${FPGA_PART})
+# HLS_FLAGS is a list holding the states of  SOC, SYNTHESIS, FPGA_PART, PROFILER, HW_EMULATION, GMEM_BANK_OPT
+set(HLS_FLAGS ${SOC} ${SYNTHESIS} ${FPGA_PART} 0 0 0)
 
 #set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES "test_dataflow.hls" "*.tcl")
 
