@@ -19,7 +19,7 @@ fn @write(img: Img, i: i32, val: pixel_t) -> () { bitcast[&mut[1][pixel_t]](img.
 
 // accelerator
 fn @compute(fpga: Accelerator, arr: Img, out: Img, body: fn(Img, Img) -> ()) -> () {
-    let size = arr.width * arr.height;
+    let size = (arr.width * arr.height) as i64;
     let arr_dev = new_img(arr.width, arr.height, fpga.alloc(size * sizeof[pixel_t]()));
     let out_dev = new_img(out.width, out.height, fpga.alloc(size * sizeof[pixel_t]()));
     copy(arr.buf, arr_dev.buf);
@@ -42,12 +42,12 @@ fn main() -> i32 {
     let height = 1024;
 
     let use_hls = false;
-    let fpga = if use_hls { hls_accelerator() }
+    let fpga = if use_hls { let device_id = 0; hls_accelerator(device_id) }
                      else { let device_id = 0; opencl_accelerator(device_id) };
 
     let size = width * height;
-    let arr = new_img(width, height, alloc_cpu(size * sizeof[pixel_t]()));
-    let out = new_img(width, height, alloc_cpu(size * sizeof[pixel_t]()));
+    let arr = new_img(width, height, alloc_cpu(size as i64 * sizeof[pixel_t]()));
+    let out = new_img(width, height, alloc_cpu(size as i64 * sizeof[pixel_t]()));
     for i in range(0, size) {
         write(arr, i, i as pixel_t);
         write(out, i, 0 as pixel_t);
