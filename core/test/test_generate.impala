@@ -11,10 +11,10 @@ fn main() -> i32 {
     let fpga = if use_hls { let device_id = 0; hls_accelerator(device_id) }
                      else { let device_id = 0; opencl_accelerator(device_id) };
 
-    let arr     = alloc_cpu(size * sizeof[T]());
-    let out     = alloc_cpu(size * sizeof[T]());
-    let arr_fpga = fpga.alloc(size * sizeof[T]());
-    let out_fpga = fpga.alloc(size * sizeof[T]());
+    let arr     = alloc_cpu(size as i64 * sizeof[T]());
+    let out     = alloc_cpu(size as i64 * sizeof[T]());
+    let arr_fpga = fpga.alloc(size as i64 * sizeof[T]());
+    let out_fpga = fpga.alloc(size as i64 * sizeof[T]());
     for i in range(0, size) {
         let arr_ptr = bitcast[&mut[T]](arr.data);
         let out_ptr = bitcast[&mut[T]](out.data);
