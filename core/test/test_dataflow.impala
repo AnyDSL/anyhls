@@ -9,7 +9,7 @@ fn @read_buf(buf: Buffer, i: i32) -> data_t { bitcast[&[1][data_t]](buf.data)(i)
 fn @write_buf(buf: Buffer, i: i32, v: data_t) -> () { bitcast[&mut[1][data_t]](buf.data)(i) = v }
 
 fn @host2device(fpga: Accelerator, size: i32, arr: Buffer, fifo: &mut stream, body: fn(i32, Read, WriteFifo) -> ()) -> () {
-    let arr_fpga = fpga.alloc(size * sizeof[data_t]());
+    let arr_fpga = fpga.alloc(size as i64 * sizeof[data_t]());
     copy(arr, arr_fpga); // from cpu to fpga
 
     let read = @|i: i32| { read_buf(arr_fpga, i)};
@@ -23,7 +23,7 @@ fn @host2device(fpga: Accelerator, size: i32, arr: Buffer, fifo: &mut stream, bo
 }
 
 fn @device2host(fpga: Accelerator, size: i32, fifo: &mut stream, out: Buffer, body: fn(i32, ReadFifo, Write) -> ()) -> () {
-    let out_fpga = fpga.alloc(size * sizeof[data_t]());
+    let out_fpga = fpga.alloc(size as i64 * sizeof[data_t]());
 
     let read = @|| { read_stream(fifo) };
     let write = @|i: i32, val: data_t| { write_buf(out_fpga, i, val)};
@@ -39,8 +39,8 @@ fn @device2host(fpga: Accelerator, size: i32, fifo: &mut stream, out: Buffer, bo
 
 fn main() -> i32 {
     let size = 2048;
-    let arr = alloc_cpu(size * sizeof[data_t]());
-    let out = alloc_cpu(size * sizeof[data_t]());
+    let arr = alloc_cpu(size as i64 * sizeof[data_t]());
+    let out = alloc_cpu(size as i64 * sizeof[data_t]());
     static mut fifo : stream;
 
     for i in range(0, size) {
